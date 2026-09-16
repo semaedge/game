@@ -1,0 +1,66 @@
+<?!= include("Layout"); ?>
+<?!= include("Styles_Auth"); ?>
+
+<section class="auth-page">
+  <div class="auth-aside">
+    <span class="eyebrow">Nova expedição</span>
+    <h1>Entre para o <span class="text-accent">ecossistema.</span></h1>
+    <p>Crie seu perfil de explorador e comece uma jornada estratégica pelos cenários naturais do Brasil.</p>
+    <ul class="auth-points">
+      <li>Cadastro rápido e gratuito</li>
+      <li>Progresso salvo automaticamente</li>
+      <li>Conquistas e ranking global</li>
+    </ul>
+  </div>
+  <div class="auth-container">
+    <span class="status-pill">Novo explorador</span>
+    <h2 style="margin-top:20px">Criar conta</h2>
+    <p class="auth-intro">Três campos separam você do primeiro desafio.</p>
+    <form id="registerForm" autocomplete="on" aria-describedby="authFeedback">
+      <div class="form-group">
+        <label for="username">Nome de usuário</label>
+        <input inputmode="text" type="text" id="username" name="username" autocomplete="username"
+               autocapitalize="none" autocorrect="off" spellcheck="false"
+               enterkeyhint="next" minlength="3" maxlength="20"
+               placeholder="Como quer aparecer no ranking?" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" autocomplete="email"
+               inputmode="email" autocapitalize="none" autocorrect="off"
+               spellcheck="false" enterkeyhint="next" maxlength="254"
+               placeholder="voce@exemplo.com" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Senha</label>
+        <div class="password-control">
+          <input inputmode="text" type="password" id="password" name="password" autocomplete="new-password"
+                 enterkeyhint="next" minlength="6" maxlength="30"
+                 placeholder="Mínimo de 6 caracteres" required>
+          <button class="password-toggle" type="button" data-password-toggle="password"
+                  aria-controls="password" aria-pressed="false" aria-label="Mostrar senha"
+            ><i class="material-icons" aria-hidden="true">visibility</i></button>
+        </div>
+        <div class="field-hint">Use entre 6 e 30 caracteres.</div>
+      </div>
+      <div class="form-group">
+        <label for="passwordConfirm">Confirmar senha</label>
+        <div class="password-control">
+          <input inputmode="text" type="password" id="passwordConfirm" name="passwordConfirm"
+                 autocomplete="new-password" enterkeyhint="go" minlength="6" maxlength="30"
+                 placeholder="Repita a senha" required>
+          <button class="password-toggle" type="button" data-password-toggle="passwordConfirm"
+                  aria-controls="passwordConfirm" aria-pressed="false"
+                  aria-label="Mostrar confirmação da senha"
+            ><i class="material-icons" aria-hidden="true">visibility</i></button>
+        </div>
+      </div>
+      <p class="auth-feedback" id="authFeedback" role="alert" aria-live="assertive" aria-atomic="true"></p>
+      <button type="submit" class="btn btn-primary">Criar minha conta</button>
+    </form>
+    <span class="link-text">Já faz parte? <a href="?page=login">Entre na sua conta</a></span>
+  </div>
+</section>
+
+<?!= include("Scripts_Auth"); ?>
+<?!= include("Layout_End"); ?>

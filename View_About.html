@@ -1,0 +1,19 @@
+<?!= include("Layout"); ?>
+
+<section class="page-wrap">
+  <div class="container" style="max-width:850px">
+    <span class="eyebrow">Sobre o projeto</span>
+    <h2><?!= appInfo.name ?></h2>
+    <p class="muted" style="font-size:1.12rem"><?= appInfo.description ?></p>
+    <div class="grid grid-2" style="margin-top:28px">
+      <div class="card"><span class="card-kicker">Versão</span><p class="card-value"><?= appInfo.version ?></p></div>
+      <div class="card"><span class="card-kicker">Desenvolvimento</span><p style="margin:8px 0 0;font-weight:750"><?= appInfo.developer ?></p></div>
+    </div>
+    <div class="actions">
+      <a class="btn btn-primary" href="?page=home">Voltar ao início</a>
+      <a class="btn btn-secondary" href="mailto:<?= appInfo.contact ?>">Falar com a equipe</a>
+    </div>
+  </div>
+</section>
+
+<?!= include("Layout_End"); ?>

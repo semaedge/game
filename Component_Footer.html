@@ -1,0 +1,17 @@
+<style>
+  .footer { width: var(--page); margin: 32px auto 0; padding: 28px 0 34px; border-top: 1px solid rgba(255,255,255,.08); }
+  .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; color: var(--muted); font-size: .86rem; }
+  .footer-links { display: flex; gap: 16px; }
+  .footer a { color: var(--muted); text-decoration: none; }
+  .footer a:hover { color: var(--accent); }
+  @media (max-width: 620px) { .footer-inner { align-items: flex-start; flex-direction: column; } }
+</style>
+<footer class="footer">
+  <div class="footer-inner">
+    <span>© <?= new Date().getFullYear() ?> <?!= APP_NAME ?>. Jogue, aprenda, preserve.</span>
+    <div class="footer-links">
+      <a href="?page=about">Sobre</a>
+      <a href="?page=leaderboard">Ranking</a>
+    </div>
+  </div>
+</footer>

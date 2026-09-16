@@ -1,0 +1,123 @@
+<?!= include("Layout"); ?>
+<?!= include("Styles_Game"); ?>
+
+<section class="game-page">
+  <div class="game-header">
+    <div>
+      <span class="eyebrow">Desafio em andamento</span>
+      <h2 id="mapTitle">Sema Edge</h2>
+      <p class="muted">Leve cada bloco até um ponto de energia. <strong>Comece assim:</strong> desenhe a rota, mova com as setas ou WASD e use Reiniciar mapa para testar outra hipótese.</p>
+    </div>
+    <a href="?page=maps" class="btn btn-secondary">Trocar mapa</a>
+    </div>
+
+  <?!= include('GameScene'); ?>
+
+  <div class="game-shell">
+    <div class="game-board">
+      <?!= include("Component_GameCanvas"); ?>
+      <p id="gameAssetStatus" class="game-asset-status" role="status" aria-live="polite">As formas do tabuleiro já estão disponíveis.</p>
+    </div>
+    <aside class="game-panel">
+      <?!= include("Component_ScoreBoard"); ?>
+      <div>
+        <div class="game-controls" aria-label="Controles do jogo">
+          <button class="up" id="moveUp" type="button" aria-label="Mover para cima">↑</button>
+          <button class="left" id="moveLeft" type="button" aria-label="Mover para esquerda">←</button>
+          <button class="down" id="moveDown" type="button" aria-label="Mover para baixo">↓</button>
+          <button class="right" id="moveRight" type="button" aria-label="Mover para direita">→</button>
+          <button class="restart" id="restartGame" type="button">Reiniciar mapa</button>
+        </div>
+        <p class="game-hint">Use as setas ou WASD. Se travar, reinicie e teste outra ideia — isso também é aprender.</p>
+        <div class="route-journal" style="margin-top:12px">
+          <strong>Caderno da rota</strong>
+          <label for="routePlan">1. Plano antes de mover</label>
+          <textarea id="routePlan" rows="2" maxlength="240" placeholder="Ex.: primeiro vou levar o bloco da esquerda para cima…"></textarea>
+          <label for="routeReflection">2. Revisão depois de resolver</label>
+          <textarea id="routeReflection" rows="3" maxlength="420" placeholder="Onde sua previsão funcionou? O que você precisou mudar?"></textarea>
+          <small id="routeJournalStatus" role="status" aria-live="polite">Escreva um plano curto para liberar a primeira tentativa.</small>
+        </div>
+        <div id="gameCompleteActions" class="game-complete-actions" hidden>
+          <button id="saveRouteEvidence" class="btn btn-primary" type="button">Registrar conclusão</button>
+          <button id="btnStrategyFeedback" class="btn btn-secondary" type="button" hidden>Conversar sobre minha estratégia</button>
+          <a id="nextStageLink" class="btn btn-primary" href="?page=maps">Próximo desafio</a>
+          <a class="btn btn-secondary" href="?page=maps">Testar outra paisagem</a>
+        </div>
+        <div id="strategyFeedbackCard" class="strategy-feedback-card" hidden aria-live="polite">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span aria-hidden="true">🧭</span>
+              <strong id="strategyFeedbackTitle" style="font-size:0.95rem; color:var(--ink);">Expedição Cartográfica — Caderno de Estratégia</strong>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span id="strategyFeedbackProviderBadge" style="font-size:0.75rem; padding:2px 8px; border-radius:12px; background:rgba(255,255,255,.08); color:var(--muted); font-weight:500;"></span>
+              <span id="strategyFeedbackReviewBadge" style="font-size:0.75rem; padding:2px 8px; border-radius:12px; background:rgba(255,255,255,.08); color:var(--muted);" hidden></span>
+            </div>
+          </div>
+          <p id="strategyFeedbackStatus" class="muted" role="status">Carregando devolutiva pedagógica…</p>
+          <div id="strategyFeedbackContent" hidden>
+            <div style="margin-bottom:8px;">
+              <span style="font-weight:600; font-size:0.85rem; color:var(--muted); display:block;">Observação da expedição:</span>
+              <p id="strategyFeedbackObservation" style="margin:4px 0 8px 0; font-size:0.9rem; line-height:1.4; color:var(--ink);"></p>
+            </div>
+            <div id="strategyFeedbackLimitationContainer" style="margin-bottom:8px; padding:8px 10px; border-radius:8px; border:1px solid rgba(245,158,11,.3); background:rgba(245,158,11,.08);" hidden>
+              <span style="font-weight:600; font-size:0.8rem; color:#f59e0b; display:block;">Ressalva da análise:</span>
+              <p id="strategyFeedbackLimitation" style="margin:2px 0 0 0; font-size:0.8rem; color:var(--ink);"></p>
+            </div>
+            <div id="strategyFeedbackQuotesContainer" style="margin-bottom:8px;" hidden>
+              <span style="font-weight:600; font-size:0.85rem; color:var(--muted); display:block;">Trechos destacados:</span>
+              <ul id="strategyFeedbackQuotes" style="margin:4px 0 8px 18px; padding:0; font-size:0.85rem; font-style:italic; color:var(--muted);"></ul>
+            </div>
+            <div style="margin-bottom:8px; padding:8px; border-radius:6px; border-left:3px solid var(--accent); background:rgba(186,255,74,.05);">
+              <span style="font-weight:600; font-size:0.85rem; color:var(--accent); display:block;">Pergunta para refletir:</span>
+              <p id="strategyFeedbackQuestion" style="margin:4px 0; font-size:0.9rem; font-weight:500; color:var(--ink);"></p>
+            </div>
+            <div style="margin-bottom:8px;">
+              <span style="font-weight:600; font-size:0.85rem; color:var(--muted); display:block;">Sugestão para o próximo percurso:</span>
+              <p id="strategyFeedbackNextTest" style="margin:4px 0 8px 0; font-size:0.85rem; color:var(--ink);"></p>
+            </div>
+            <div style="margin-top:10px; border-top:1px dashed var(--line); padding-top:8px;">
+              <label for="strategyStudentReply" style="font-weight:600; font-size:0.85rem; color:var(--muted); display:block; margin-bottom:4px;">Sua resposta ou esclarecimento (opcional):</label>
+              <textarea id="strategyStudentReply" rows="2" maxlength="300" style="width:100%; border:1px solid rgba(255,255,255,.14); border-radius:4px; padding:6px; font-size:0.85rem; background:rgba(255,255,255,.04); color:var(--ink);" placeholder="Explique sua escolha ou o que pretende testar…"></textarea>
+              <button id="btnSaveStrategyReply" type="button" class="btn btn-secondary" style="margin-top:4px;">Anotar no caderno</button>
+              <span id="strategyStudentReplyStatus" class="muted" style="margin-left:8px;" role="status"></span>
+            </div>
+            <!-- Painel exclusivo de homologação e revisão docente (Piloto) -->
+            <div id="teacherReviewPanel" style="margin-top:12px; padding:10px; border-radius:6px; border:1px solid rgba(14,165,233,.3); background:rgba(14,165,233,.06);" hidden>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                <strong style="font-size:0.85rem; color:#0284c7;">Painel de Homologação Docente</strong>
+                <span style="font-size:0.75rem; color:var(--muted);">Piloto pedagógico</span>
+              </div>
+              <p style="font-size:0.8rem; color:var(--muted); margin:0 0 8px 0;">Como docente, você pode ajustar a devolutiva e aprovar a publicação para o estudante.</p>
+              <div style="margin-bottom:6px;">
+                <label for="teacherEditObservation" style="font-size:0.75rem; font-weight:600; color:var(--muted); display:block; margin-bottom:3px;">Observação pedagógica:</label>
+                <textarea id="teacherEditObservation" rows="2" style="width:100%; border:1px solid rgba(255,255,255,.14); border-radius:4px; padding:6px; font-size:0.8rem; background:rgba(255,255,255,.04); color:var(--ink);"></textarea>
+              </div>
+              <div style="margin-bottom:6px;">
+                <label for="teacherReviewNoteInput" style="font-size:0.75rem; font-weight:600; color:var(--muted); display:block; margin-bottom:3px;">Nota pedagógica (opcional):</label>
+                <input type="text" id="teacherReviewNoteInput" maxlength="200" style="width:100%; border:1px solid rgba(255,255,255,.14); border-radius:4px; padding:6px; font-size:0.8rem; background:rgba(255,255,255,.04); color:var(--ink);" placeholder="Comentário sobre o raciocínio do estudante…">
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                <button id="btnApproveStrategyFeedback" type="button" class="btn btn-primary" style="font-size:0.8rem; padding:6px 14px;">Aprovar e liberar ao estudante</button>
+                <button id="btnSaveDraftStrategyFeedback" type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:6px 14px;">Salvar rascunho</button>
+                <span id="teacherReviewStatus" class="muted" style="font-size:0.78rem;" role="status"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <?!= include("Component_Inventory"); ?>
+    </aside>
+  </div>
+</section>
+
+<script>
+  window.SEMA_GAME = {
+    initialStage: <?= initialStage ?>,
+    mapData: <?!= mapData ?>,
+    assets: <?!= assets ?>,
+    journalKey: <?!= JSON.stringify(journalKey) ?>
+  };
+</script>
+<?!= include("Scripts_Game"); ?>
+<?!= include("Layout_End"); ?>

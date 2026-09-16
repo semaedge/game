@@ -1,0 +1,70 @@
+<!--
+  HealthCheck.html
+  codex-frontend-backend-healthcheck
+
+  Selo que torna visivel se o frontend esta mesmo falando com o backend.
+
+  Aditivo e isolado de proposito:
+   - cria o proprio elemento, nao depende de container nenhum do app;
+   - chama o metodo top-level ping() (Ping.gs), que nao toca planilha;
+   - degrada em silencio: pointer-events:none, nunca bloqueia a interface.
+-->
+<style id="codex-backend-status-estilo">
+  /* O selo e fixo no canto inferior esquerdo. Em 360px (Samsung S20, a tela de
+     referencia da frota) a faixa com texto cobria o conteudo — na tela de login
+     ficava exatamente sobre o link de recuperar senha. No celular ele vira um
+     ponto colorido: mesma informacao, sem tapar linha nenhuma. O texto continua
+     no DOM para o leitor de tela e no title para quem passa o dedo. */
+  @media (max-width: 480px) {
+    #codex-backend-status {
+      width: 14px;
+      height: 14px;
+      padding: 0 !important;
+      overflow: hidden;
+      text-indent: -999px;
+      bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    }
+  }
+</style>
+<script>
+(function () {
+  function mount() {
+    if (document.getElementById('codex-backend-status')) {
+      return document.getElementById('codex-backend-status');
+    }
+    var el = document.createElement('div');
+    el.id = 'codex-backend-status';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('title', 'Estado da conexão com o jogo');
+    el.style.cssText = [
+      'position:fixed', 'bottom:10px', 'left:10px', 'z-index:2147483000',
+      'font:12px/1.4 system-ui,Segoe UI,Roboto,sans-serif',
+      'padding:4px 10px', 'border-radius:999px',
+      'background:#6b7280', 'color:#fff', 'opacity:0.85',
+      'pointer-events:none', 'user-select:none',
+      'box-shadow:0 1px 3px rgba(0,0,0,.25)'
+    ].join(';');
+    el.textContent = 'Conectando…';
+    (document.body || document.documentElement).appendChild(el);
+    return el;
+  }
+  function set(el, color, text) { if (el) { el.style.background = color; el.textContent = text; } }
+  function ok(el) { set(el, '#16a34a', 'Conexão ativa'); }
+  function down(el) { set(el, '#dc2626', 'Sem conexão'); }
+  function check(el) {
+    if (window.google && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function () { ok(el); })
+        .withFailureHandler(function () { down(el); })
+        .ping();
+      return;
+    }
+    set(el, '#b45309', 'Conectando…');
+  }
+  function init() { check(mount()); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else { init(); }
+})();
+</script>

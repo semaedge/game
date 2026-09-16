@@ -1,0 +1,260 @@
+<?!= include("Layout"); ?>
+<?!= include("Styles_Admin"); ?>
+<?!= include("Component_AdminNav"); ?>
+
+<style>
+  .frontend-score-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin: 24px 0; }
+  .frontend-score {
+    min-height: 190px; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 24px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: linear-gradient(145deg, rgba(18,40,32,.94), rgba(9,23,18,.96));
+  }
+  .frontend-score.primary { border-color: rgba(186,255,74,.38); background: radial-gradient(circle at 85% 10%, rgba(186,255,74,.18), transparent 45%), var(--surface); }
+  .frontend-score strong { display: block; color: var(--ink); font-size: clamp(3rem, 7vw, 5rem); line-height: .9; letter-spacing: -.08em; }
+  .frontend-score strong small { color: var(--muted); font-size: 1rem; letter-spacing: 0; }
+  .frontend-score p { margin: 10px 0 0; color: var(--muted); }
+  .ux-category-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+  .ux-category { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.025); }
+  .ux-category-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px; }
+  .ux-category-head strong { font-size: 1.3rem; }
+  .ux-progress { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+  .ux-progress span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+  .audit-result { display: none; margin-top: 18px; }
+  .audit-result.is-visible { display: block; }
+  .audit-metric { display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07); }
+  .audit-links { display:flex;flex-wrap:wrap;gap:8px;margin-top:16px; }
+  .audit-links a { padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);text-decoration:none;font-size:.78rem; }
+  .audit-links a:hover { color:var(--accent);border-color:var(--accent); }
+  .recommendation-list { display:grid;gap:10px;margin-top:16px; }
+  .recommendation-row { padding:16px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025); }
+  .recommendation-row h3 { margin:5px 0;font-size:1rem; }
+  .recommendation-row p { margin:0;color:var(--muted);font-size:.88rem; }
+  .dimension-tag { color:var(--accent);font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase; }
+  .audit-status { color:var(--accent);font-weight:750; }
+  .audit-status.warning { color:var(--warning); }
+  .audit-status.unknown { color:var(--muted); }
+  .source-tag { color:var(--muted);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase; }
+  .coverage-note { margin:6px 0 0;color:var(--muted);font-size:.84rem; }
+  @media (max-width: 860px) { .frontend-score-grid, .ux-category-grid { grid-template-columns: 1fr; } }
+</style>
+
+<section class="page-wrap admin-container" id="frontend-maturity-page" aria-describedby="frontendAssessmentStatus">
+  <div style="display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap">
+    <div>
+      <span class="eyebrow">Experiência e interface</span>
+      <h2>Maturidade do frontend</h2>
+      <p class="muted">Análise estática dos <?= frontendReport.source.templates ?> templates servidos, combinada com as medições de DOM coletadas das telas reais.</p>
+      <p class="coverage-note">
+        Cobertura de verificação: <?= frontendReport.coverage ?>% •
+        <?= frontendReport.domSamples.samples ?> amostra(s) de DOM em <?= frontendReport.domSamples.pages.length ?> tela(s)
+        <? if (frontendReport.domSamples.viewports.length) { ?>(<?= frontendReport.domSamples.viewports.join(', ') ?>)<? } ?>.
+        <? if (!frontendReport.domSamples.samples) { ?>Percorra as telas como administrador para coletar medições.<? } ?>
+      </p>
+      <? if (frontendReport.level.cappedByCoverage) { ?>
+        <p style="color:var(--warning)">Cobertura abaixo de 80% limita o nível máximo a Avançado.</p>
+      <? } ?>
+    </div>
+    <div>
+      <button id="refreshFrontendAssessment" type="button" class="btn btn-primary" aria-controls="frontendAssessmentStatus">Atualizar avaliação</button>
+      <p id="frontendAssessmentStatus" class="audit-status" role="status" aria-live="polite" style="margin:8px 0 0;">Avaliação pronta para ser atualizada.</p>
+    </div>
+  </div>
+
+  <div class="frontend-score-grid">
+    <article class="frontend-score primary">
+      <span class="card-kicker">Resultado geral • <?= frontendReport.level.name ?></span>
+      <div><strong><?= frontendReport.overallScore ?><small>/100</small></strong><p>A nota geral combina as duas dimensões.</p></div>
+    </article>
+    <article class="frontend-score">
+      <span class="card-kicker">Maturidade</span>
+      <div><strong><?= frontendReport.maturity.score ?><small>/100</small></strong><p>Arquitetura, qualidade, acessibilidade e manutenção.</p></div>
+    </article>
+    <article class="frontend-score">
+      <span class="card-kicker">Intuitividade</span>
+      <div><strong><?= frontendReport.intuitiveness.score ?><small>/100</small></strong><p>Clareza, consistência, feedback e eficiência.</p></div>
+    </article>
+  </div>
+
+  <div class="ux-category-grid">
+    <? frontendReport.categories.forEach(function(category) { ?>
+      <article class="ux-category">
+        <span class="dimension-tag"><?= category.dimension ?></span>
+        <div class="ux-category-head"><span><?= category.name ?></span><strong><?= category.score ?>%</strong></div>
+        <div class="ux-progress"><span style="width:<?= category.score ?>%"></span></div>
+      </article>
+    <? }); ?>
+  </div>
+
+  <div class="grid grid-2" style="align-items:start;margin-top:20px">
+    <article class="container" style="width:100%;margin:0">
+      <span class="eyebrow">Scanner em tempo real</span>
+      <h3>Auditar esta tela</h3>
+      <p class="muted">Mede o DOM renderizado, acessibilidade básica, responsividade, hierarquia e tamanho dos controles.</p>
+      <button id="runLiveAudit" type="button" class="btn btn-secondary">Executar diagnóstico local</button>
+      <div id="liveAuditResult" class="audit-result" aria-live="polite" aria-busy="false"></div>
+      <div class="audit-links">
+        <a href="?page=home&ui-audit=1">Auditar início</a>
+        <a href="?page=dashboard&ui-audit=1">Auditar painel</a>
+        <a href="?page=maps&ui-audit=1">Auditar mapas</a>
+        <a href="?page=game&ui-audit=1">Auditar jogo</a>
+        <a href="?page=profile&ui-audit=1">Auditar perfil</a>
+      </div>
+    </article>
+
+    <article class="container" style="width:100%;margin:0">
+      <span class="eyebrow">Plano de evolução</span>
+      <h3>Recomendações prioritárias</h3>
+      <div class="recommendation-list">
+        <? if (!frontendReport.recommendations.length) { ?>
+          <p class="empty-state" role="status">Nenhuma recomendação pendente para o frontend.</p>
+        <? } else { frontendReport.recommendations.forEach(function(item) { ?>
+          <div class="recommendation-row">
+            <span class="dimension-tag"><?= item.dimension ?> • <?= item.status === 'unknown' ? 'não verificado' : item.severity ?></span>
+            <h3><?= item.title ?></h3>
+            <p><?= item.evidence ?></p>
+            <p><?= item.action ?></p>
+          </div>
+        <? }); } ?>
+      </div>
+    </article>
+  </div>
+
+  <article class="container" style="width:100%;margin:20px 0 0">
+    <span class="eyebrow">Evidências</span>
+    <h3>Controles avaliados</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Dimensão</th><th>Controle</th><th>Origem</th><th>Status</th><th>Pontos</th></tr></thead>
+        <tbody>
+          <? if (!frontendReport.checks.length) { ?>
+            <tr><td colspan="5"><span class="empty-state" role="status">Nenhum controle de frontend foi retornado.</span></td></tr>
+          <? } else { frontendReport.checks.forEach(function(check) { ?>
+            <tr title="<?= check.evidence ?>">
+              <td><?= check.dimension ?></td>
+              <td><?= check.title ?></td>
+              <td><span class="source-tag"><?= check.source ?></span></td>
+              <td>
+                <span class="audit-status <?= check.status === 'pass' ? '' : (check.status === 'unknown' ? 'unknown' : 'warning') ?>">
+                  <? if (check.status === 'pass') { ?>OK<? } else if (check.status === 'unknown') { ?>Não verificado<? } else { ?>Evoluir<? } ?>
+                </span>
+              </td>
+              <td><?= check.status === 'unknown' ? '—' : check.earned + '/' + check.weight ?></td>
+            </tr>
+          <? }); } ?>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<script>
+  function setFrontendStatus(message, isError) {
+    var status = document.getElementById("frontendAssessmentStatus");
+    if (!status) return;
+    status.textContent = message;
+    status.setAttribute("aria-live", isError ? "assertive" : "polite");
+    status.classList.toggle("warning", !!isError);
+    status.style.color = isError ? "#b42318" : "";
+  }
+
+  document.getElementById("refreshFrontendAssessment").addEventListener("click", function() {
+    var button = this;
+    setButtonLoading(button, true, "Avaliando…");
+    button.setAttribute("aria-busy", "true");
+    setFrontendStatus("Atualizando a avaliação do frontend...");
+    if (!window.SemaAPI || typeof SemaAPI.call !== "function") {
+      setButtonLoading(button, false);
+      button.setAttribute("aria-busy", "false");
+      setFrontendStatus("Não foi possível atualizar a avaliação agora.", true);
+      return;
+    }
+    SemaAPI.call("admin.maturity.frontend")
+      .then(function(response) {
+        var data = response && response.data;
+        if (!data || typeof data !== "object") throw new Error("Resposta de avaliação inválida");
+        showServerMessage("Frontend avaliado: " + (Number.isFinite(Number(data.overallScore)) ? Number(data.overallScore) : 0) + "/100.");
+        setFrontendStatus("Avaliação atualizada. Recarregando os resultados...");
+        window.setTimeout(function() { window.location.reload(); }, 650);
+      })
+      .catch(function(error) {
+        setButtonLoading(button, false);
+        button.setAttribute("aria-busy", "false");
+        console.error("Falha ao atualizar a avaliação do frontend:", error);
+        setFrontendStatus("Não foi possível atualizar a avaliação. Tente novamente.", true);
+        showServerMessage("Não foi possível atualizar a avaliação.", "error");
+      });
+  });
+
+  document.getElementById("runLiveAudit").addEventListener("click", function() {
+    var result = document.getElementById("liveAuditResult");
+    var button = this;
+    if (!result || !window.SemaFrontendAudit || typeof SemaFrontendAudit.run !== "function") {
+      setFrontendStatus("O diagnóstico local está indisponível nesta tela.", true);
+      return;
+    }
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    result.setAttribute("aria-busy", "true");
+    try {
+      var report = SemaFrontendAudit.run(document);
+      var checks = report && Array.isArray(report.checks) ? report.checks : [];
+      var issues = checks.filter(function(check) { return check && check.status !== "pass"; });
+      result.replaceChildren();
+      var score = document.createElement("div");
+      score.className = "card";
+      var kicker = document.createElement("span");
+      kicker.className = "card-kicker";
+      kicker.textContent = "Nota desta tela";
+      var scoreValue = document.createElement("p");
+      scoreValue.className = "card-value";
+      scoreValue.textContent = (Number.isFinite(Number(report && report.score)) ? Number(report.score) : 0) + "/100";
+      var issueCount = document.createElement("p");
+      issueCount.className = "muted";
+      issueCount.textContent = (Number.isFinite(Number(report && report.issues)) ? Number(report.issues) : issues.length) + " ponto(s) de atenção.";
+      score.appendChild(kicker);
+      score.appendChild(scoreValue);
+      score.appendChild(issueCount);
+      result.appendChild(score);
+      issues.forEach(function(issue) {
+        var row = document.createElement("div");
+        row.className = "audit-metric";
+        var name = document.createElement("span");
+        name.textContent = issue.title == null ? "Controle sem título" : String(issue.title);
+        var value = document.createElement("strong");
+        value.className = "audit-status warning";
+        value.textContent = String(issue.earned == null ? 0 : issue.earned) + "/" + String(issue.weight == null ? 0 : issue.weight);
+        row.appendChild(name);
+        row.appendChild(value);
+        result.appendChild(row);
+      });
+      result.classList.add("is-visible");
+      result.setAttribute("aria-busy", "false");
+      setFrontendStatus("Diagnóstico local concluído.");
+
+      // Envia a medição para que a dimensão de intuitividade tenha evidência.
+      if (typeof SemaFrontendAudit.submit === "function") {
+        Promise.resolve(SemaFrontendAudit.submit(report))
+          .then(function(response) {
+            var coverage = response && response.data && response.data.coverage;
+            if (!coverage) return;
+            showServerMessage("Amostra registrada: " + (Number.isFinite(Number(coverage.samples)) ? Number(coverage.samples) : 0) + " tela(s) medida(s).");
+          })
+          .catch(function(error) {
+            console.error("Falha ao registrar a medição do frontend:", error);
+            showServerMessage("O diagnóstico foi concluído, mas não pôde ser registrado.", "error");
+          });
+      }
+    } catch (error) {
+      console.error("Falha ao executar o diagnóstico local:", error);
+      result.replaceChildren();
+      result.classList.remove("is-visible");
+      result.setAttribute("aria-busy", "false");
+      setFrontendStatus("Não foi possível executar o diagnóstico local.", true);
+    } finally {
+      button.disabled = false;
+      button.setAttribute("aria-busy", "false");
+    }
+  });
+</script>
+
+<?!= include("Layout_End"); ?>

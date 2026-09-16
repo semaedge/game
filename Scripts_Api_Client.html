@@ -1,0 +1,130 @@
+<script>
+  window.SemaAPI = (function() {
+    var pending = 0;
+    var storageKey = "semaedge.session";
+
+    function tokenFromUrl() {
+      return new URLSearchParams(window.location.search).get("session") || "";
+    }
+
+    function getSessionToken() {
+      var urlToken = tokenFromUrl();
+      if (urlToken) {
+        try { window.localStorage.setItem(storageKey, urlToken); } catch (error) {}
+        return urlToken;
+      }
+      try { return window.localStorage.getItem(storageKey) || ""; } catch (error) { return ""; }
+    }
+
+    function setSessionToken(token) {
+      try {
+        if (token) window.localStorage.setItem(storageKey, token);
+        else window.localStorage.removeItem(storageKey);
+      } catch (error) {}
+    }
+
+    function withSession(url) {
+      var token = getSessionToken();
+      if (!token || !url || url.charAt(0) !== "?") return url;
+      var params = new URLSearchParams(url.slice(1));
+      params.set("session", token);
+      return "?" + params.toString();
+    }
+
+    function requestId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "web-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+    }
+
+    function emit(name, detail) {
+      document.dispatchEvent(new CustomEvent("sema:api:" + name, { detail: detail }));
+    }
+
+    function call(action, payload, options) {
+      options = options || {};
+      var id = requestId();
+      var timeoutMs = options.timeoutMs || 30000;
+      pending += 1;
+      emit("start", { action: action, requestId: id, pending: pending });
+
+      return new Promise(function(resolve, reject) {
+        var settled = false;
+        var timer = window.setTimeout(function() {
+          if (settled) return;
+          settled = true;
+          pending = Math.max(0, pending - 1);
+          var timeoutError = new Error("A operação demorou mais que o esperado.");
+          timeoutError.code = "TIMEOUT";
+          emit("end", { action: action, requestId: id, pending: pending, ok: false });
+          reject(timeoutError);
+        }, timeoutMs);
+
+        google.script.run
+          .withSuccessHandler(function(response) {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timer);
+            pending = Math.max(0, pending - 1);
+            emit("end", { action: action, requestId: id, pending: pending, ok: Boolean(response && response.ok) });
+
+            if (!response || response.ok !== true) {
+              var apiError = new Error(response && response.message
+                ? response.message
+                : "Resposta inválida do servidor.");
+              apiError.code = response && response.error ? response.error.code : "INVALID_RESPONSE";
+              apiError.response = response;
+              if (apiError.code === "UNAUTHENTICATED" && options.redirectOnAuth !== false) {
+                setSessionToken("");
+                showServerMessage(apiError.message, "error");
+                window.setTimeout(function() { redirectTo("?page=login"); }, 700);
+              }
+              reject(apiError);
+              return;
+            }
+            if (action === "auth.login" && response.data && response.data.sessionToken) {
+              setSessionToken(response.data.sessionToken);
+            }
+            if (action === "auth.logout") {
+              setSessionToken("");
+            }
+            resolve(response);
+          })
+          .withFailureHandler(function(error) {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timer);
+            pending = Math.max(0, pending - 1);
+            emit("end", { action: action, requestId: id, pending: pending, ok: false });
+            var transportError = new Error(error && error.message
+              ? error.message
+              : "Falha na comunicação com o servidor.");
+            transportError.code = "TRANSPORT_ERROR";
+            reject(transportError);
+          })
+          .apiRequest({
+            action: action,
+            payload: payload || {},
+            requestId: id,
+            sessionToken: getSessionToken()
+          });
+      });
+    }
+
+    function data(action, payload, options) {
+      return call(action, payload, options).then(function(response) {
+        return response.data;
+      });
+    }
+
+    return {
+      call: call,
+      data: data,
+      getSessionToken: getSessionToken,
+      setSessionToken: setSessionToken,
+      withSession: withSession,
+      pending: function() { return pending; }
+    };
+  })();
+</script>

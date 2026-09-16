@@ -1,0 +1,44 @@
+<style>
+  .explorer-sidebar {
+    width: var(--page); margin: 22px auto -12px;
+  }
+  .explorer-nav {
+    display: flex; align-items: center; gap: 6px; overflow-x: auto;
+    padding: 7px; border: 1px solid var(--line); border-radius: 18px;
+    background: rgba(255,255,255,.025); scrollbar-width: thin;
+  }
+  .explorer-nav a {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px;
+    min-height: 40px; padding: 0 13px; border-radius: 12px;
+    color: var(--muted); text-decoration: none; font-size: .82rem; font-weight: 700;
+  }
+  .explorer-nav a:hover, .explorer-nav a[aria-current="page"] {
+    color: var(--ink); background: rgba(186,255,74,.09);
+  }
+  .explorer-nav a[aria-current="page"] {
+    color: #07110e; background: var(--accent);
+  }
+  .explorer-nav-icon { width: 1.1rem; text-align: center; }
+  .explorer-nav-separator {
+    width: 1px; height: 24px; flex: 0 0 1px; margin: 0 3px;
+    background: rgba(255,255,255,.1);
+  }
+  @media (max-width: 620px) {
+    .explorer-sidebar { width: 100%; margin-top: 0; }
+    .explorer-nav { padding-inline: 12px; border-width: 0 0 1px; border-radius: 0; }
+  }
+</style>
+
+<aside class="explorer-sidebar" aria-label="Área do explorador">
+  <nav class="explorer-nav">
+    <a href="?page=dashboard"><span class="explorer-nav-icon" aria-hidden="true">⌂</span>Painel</a>
+    <a href="?page=maps"><span class="explorer-nav-icon" aria-hidden="true">◇</span>Mapas</a>
+    <a href="?page=game"><span class="explorer-nav-icon" aria-hidden="true">▶</span>Jogar</a>
+    <a href="?page=achievements"><span class="explorer-nav-icon" aria-hidden="true">✦</span>Conquistas</a>
+    <a href="?page=profile"><span class="explorer-nav-icon" aria-hidden="true">●</span>Perfil</a>
+    <? if (Auth_Session.isAdmin()) { ?>
+      <span class="explorer-nav-separator" aria-hidden="true"></span>
+      <a href="?page=admin-users"><span class="explorer-nav-icon" aria-hidden="true">⚙</span>Administração</a>
+    <? } ?>
+  </nav>
+</aside>

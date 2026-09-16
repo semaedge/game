@@ -1,0 +1,111 @@
+<?!= include("Layout"); ?>
+<?!= include("Styles_Auth"); ?>
+
+<section class="auth-page">
+  <div class="auth-aside">
+    <span class="eyebrow">Bem-vindo de volta</span>
+    <h1>Retome sua <span class="text-accent">expedição.</span></h1>
+    <p>Explore os mapas, teste caminhos e explique o que descobriu em cada tentativa.</p>
+    <ul class="auth-points">
+      <li>Escolha um mapa disponível</li>
+      <li>Planeje sua rota antes de começar</li>
+      <li>Compare o resultado e revise sua estratégia</li>
+    </ul>
+  </div>
+  <div class="auth-container">
+    <div class="auth-brand" data-brand-logo aria-label="Marca Sema Edge"><span class="brand-mark-fallback">SE</span></div>
+    <span class="status-pill">Acesso seguro</span>
+    <h2 style="margin-top:20px">Entrar</h2>
+    <p class="auth-intro">Entre com seu nome de usuário e sua senha.</p>
+    <p class="empty-state" role="status">Se ainda não houver uma conta disponível, use o link de cadastro abaixo para começar.</p>
+    <form id="loginForm" autocomplete="on" aria-describedby="authFeedback">
+      <div class="form-group">
+        <label for="username">Nome de usuário</label>
+        <input inputmode="text" type="text" id="username" name="username" autocomplete="username"
+               autocapitalize="none" autocorrect="off" spellcheck="false"
+               enterkeyhint="next" minlength="3" maxlength="32"
+               placeholder="seu.usuario" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Senha</label>
+        <div class="password-control">
+          <input inputmode="text" type="password" id="password" name="password" autocomplete="current-password"
+                 enterkeyhint="go" minlength="4" maxlength="30" placeholder="Sua senha" required>
+          <button class="password-toggle" type="button" data-password-toggle="password"
+                  aria-controls="password" aria-pressed="false" aria-label="Mostrar senha"
+            ><i class="material-icons" aria-hidden="true">visibility</i></button>
+        </div>
+      </div>
+      <p class="auth-feedback" id="authFeedback" role="alert" aria-live="assertive" aria-atomic="true"></p>
+      <button type="submit" class="btn btn-primary" id="submitButton" disabled>Entrar no jogo</button>
+    </form>
+    <p class="link-text" role="note"><strong>Uso pedagógico e privacidade:</strong>
+      o progresso é usado pela escola para acompanhamento da aprendizagem. Ao continuar,
+      você confirma ciência desse uso e dos termos de privacidade.</p>
+    <span class="link-text">Primeira vez por aqui? <a href="<?= getScriptUrl() ?>?page=register" target="_top">Crie sua conta</a></span>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var target = document.querySelector('[data-brand-logo]');
+    if (!target) return;
+    var image = document.createElement('img');
+    image.className = 'codex-login-logo';
+    image.src = 'data:image/png;base64,<?!= includeInlineData("BrandLogoBase64") ?>';
+    image.alt = 'Marca Sema Edge';
+    target.replaceChildren(image);
+
+    var form = document.getElementById('loginForm');
+    var username = document.getElementById('username');
+    var password = document.getElementById('password');
+    var submit = document.getElementById('submitButton');
+    var feedback = document.getElementById('authFeedback');
+    var toggle = document.querySelector('.password-toggle');
+
+    function updateSubmitState() {
+      var userOk = username.value.trim().length >= 3;
+      var passOk = password.value.length >= 4;
+      submit.disabled = !(userOk && passOk);
+      username.setAttribute('aria-invalid', userOk ? 'false' : 'true');
+      password.setAttribute('aria-invalid', passOk ? 'false' : 'true');
+    }
+
+    [username, password].forEach(function (field) {
+      field.addEventListener('input', function () {
+        if (feedback.textContent) {
+          feedback.textContent = '';
+        }
+        updateSubmitState();
+      });
+    });
+
+    toggle.addEventListener('click', function () {
+      var showing = password.type === 'text';
+      password.type = showing ? 'password' : 'text';
+      toggle.setAttribute('aria-pressed', String(!showing));
+      toggle.setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+      password.focus();
+    });
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      if (username.value.trim().length < 3) {
+        feedback.textContent = 'Informe um nome de usuário com pelo menos 3 caracteres.';
+        username.focus();
+        return;
+      }
+      if (password.value.length < 4) {
+        feedback.textContent = 'A senha precisa ter pelo menos 4 caracteres.';
+        password.focus();
+        return;
+      }
+      feedback.textContent = 'Autenticando...';
+    });
+
+    updateSubmitState();
+  }());
+</script>
+
+<?!= include("Scripts_Auth"); ?>
+<?!= include("Layout_End"); ?>

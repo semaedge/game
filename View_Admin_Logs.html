@@ -1,0 +1,168 @@
+<!-- View_Admin_Logs.html -->
+<!--
+  Funcionalidade Principal: Consulta da trilha de auditoria e dos logs
+  estruturados do sistema.
+
+  Integrações:
+  - Router_Pages.gs: rota `admin-logs`, restrita a administradores.
+  - API_Router.gs: ações `admin.audit.list` e `admin.logs.list`.
+  - Scripts_Utils.html: renderização de tabelas e estados vazios.
+
+  Notas desta revisão:
+  - O título prometia "Logs do Sistema e Auditoria", mas a tela só carregava
+    auditoria — os logs estruturados que Middleware_Logger persiste não tinham
+    nenhuma ação de API exposta. Agora as duas fontes aparecem.
+  - A tabela vazia ficava simplesmente em branco, sem distinguir "sem
+    registros" de "falhou ao carregar".
+  - O botão não indicava carregamento e repetia o que o DOMContentLoaded já
+    fazia.
+  - Os handlers eram inline (onclick) e o timestamp era exibido cru.
+-->
+
+<?!= include("Layout"); ?>
+<?!= include("Styles_Admin"); ?>
+<?!= include("Component_AdminNav"); ?>
+
+<style>
+  .log-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 16px; }
+  .log-toolbar .form-group { margin: 0; }
+  .log-toolbar label { display: block; margin-bottom: 5px; color: var(--muted); font-size: .78rem; }
+  .log-toolbar select { min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface-2); }
+  .log-level { font-size: .72rem; font-weight: 800; letter-spacing: .06em; }
+  .log-level.ERROR { color: var(--danger); }
+  .log-level.WARN { color: var(--warning); }
+  .log-level.INFO { color: var(--muted); }
+  .log-context { max-width: 380px; overflow: hidden; color: var(--muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+  .log-section + .log-section { margin-top: 34px; }
+</style>
+
+<section class="page-wrap admin-container">
+  <h2>Logs do sistema e auditoria</h2>
+  <p class="muted">A auditoria registra ações de negócio; os logs estruturados registram o comportamento técnico da aplicação.</p>
+
+  <article class="log-section">
+    <div class="log-toolbar">
+      <div>
+        <h3 style="margin:0">Trilha de auditoria</h3>
+        <p class="muted" id="auditSummary" style="margin:4px 0 0;font-size:.84rem">Carregando…</p>
+      </div>
+      <button id="reloadAudit" type="button" class="btn btn-secondary btn-sm" style="margin-left:auto">Recarregar</button>
+    </div>
+    <div class="table-wrap">
+      <table class="log-table">
+        <thead>
+          <tr><th>Quando</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr>
+        </thead>
+        <tbody id="auditLogsTableBody"></tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="log-section">
+    <div class="log-toolbar">
+      <div>
+        <h3 style="margin:0">Logs estruturados</h3>
+        <p class="muted" id="systemSummary" style="margin:4px 0 0;font-size:.84rem">Carregando…</p>
+      </div>
+      <div class="form-group">
+        <label for="logLevel">Nível</label>
+        <select id="logLevel">
+          <option value="">Todos</option>
+          <option value="ERROR">Erro</option>
+          <option value="WARN">Alerta</option>
+          <option value="INFO">Informação</option>
+        </select>
+      </div>
+      <button id="reloadSystem" type="button" class="btn btn-secondary btn-sm">Recarregar</button>
+    </div>
+    <div class="table-wrap">
+      <table class="log-table">
+        <thead>
+          <tr><th>Quando</th><th>Nível</th><th>Evento</th><th>Mensagem</th><th>Requisição</th></tr>
+        </thead>
+        <tbody id="systemLogsTableBody"></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<script>
+  (function() {
+    var auditBody = document.getElementById("auditLogsTableBody");
+    var systemBody = document.getElementById("systemLogsTableBody");
+    var auditSummary = document.getElementById("auditSummary");
+    var systemSummary = document.getElementById("systemSummary");
+
+    var auditColumns = [
+      { key: "timestamp", format: SemaUI.formatDateTime },
+      { key: "username" },
+      { key: "action" },
+      { key: "details", className: "log-context" }
+    ];
+
+    var systemColumns = [
+      { key: "timestamp", format: SemaUI.formatDateTime },
+      {
+        key: "level",
+        render: function(cell, value) {
+          var tag = document.createElement("span");
+          tag.className = "log-level " + String(value || "INFO");
+          tag.textContent = value || "INFO";
+          cell.appendChild(tag);
+        }
+      },
+      { key: "event" },
+      { key: "message" },
+      { key: "requestId", className: "log-context" }
+    ];
+
+    function loadAudit(button) {
+      return SemaUI.withButton(button, "Carregando…", function() {
+        return SemaAPI.call("admin.audit.list").then(function(response) {
+          var rows = (response.data || []).slice().reverse();
+          var count = SemaUI.renderRows(auditBody, rows, auditColumns, {
+            emptyMessage: "Nenhuma ação auditada ainda.",
+            emptyHint: "Logins e operações administrativas aparecem aqui assim que acontecerem."
+          });
+          auditSummary.textContent = count + " registro(s), do mais recente ao mais antigo.";
+        });
+      }).catch(function() {
+        SemaUI.clear(auditBody);
+        SemaUI.emptyRow(auditBody, auditColumns.length, "Não foi possível carregar a auditoria.",
+          "Verifique se as migrações foram aplicadas e tente novamente.");
+        auditSummary.textContent = "Falha ao carregar.";
+      });
+    }
+
+    function loadSystem(button) {
+      var level = document.getElementById("logLevel").value;
+      return SemaUI.withButton(button, "Carregando…", function() {
+        return SemaAPI.call("admin.logs.list", { limit: 200, level: level }).then(function(response) {
+          var count = SemaUI.renderRows(systemBody, response.data || [], systemColumns, {
+            emptyMessage: level ? "Nenhum log deste nível." : "Nenhum log estruturado registrado.",
+            emptyHint: "Eventos de alerta e erro são persistidos automaticamente."
+          });
+          systemSummary.textContent = count + " evento(s)" + (level ? " no nível " + level : "") + ".";
+        });
+      }).catch(function() {
+        SemaUI.clear(systemBody);
+        SemaUI.emptyRow(systemBody, systemColumns.length, "Não foi possível carregar os logs.",
+          "A aba de logs estruturados pode não existir ainda. Execute as migrações.");
+        systemSummary.textContent = "Falha ao carregar.";
+      });
+    }
+
+    document.getElementById("reloadAudit").addEventListener("click", function() { loadAudit(this); });
+    document.getElementById("reloadSystem").addEventListener("click", function() { loadSystem(this); });
+    document.getElementById("logLevel").addEventListener("change", function() {
+      loadSystem(document.getElementById("reloadSystem"));
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      loadAudit(document.getElementById("reloadAudit"));
+      loadSystem(document.getElementById("reloadSystem"));
+    });
+  })();
+</script>
+
+<?!= include("Layout_End"); ?>

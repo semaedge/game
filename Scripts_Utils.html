@@ -1,0 +1,149 @@
+<!-- Scripts_Utils.html -->
+<!--
+  Funcionalidade Principal: Utilitários de interface compartilhados pelas telas
+  que montam listas dinamicamente.
+
+  Integrações:
+  - Partial_Scripts.html: carregado no shell, depois do cliente de API.
+  - View_Admin_Users.html / View_Admin_Logs.html: renderizam tabelas por aqui.
+
+  Notas desta revisão:
+  - O arquivo era órfão: nenhum template o incluía. Ele expunha formatCurrency
+    (num jogo sem moeda) e getUrlParameter reimplementando URLSearchParams.
+  - As telas de administração montavam tabela, estado vazio e download cada uma
+    do seu jeito. Isso virou um lugar só.
+  - renderRows usa textContent, nunca innerHTML: dado vindo do servidor não
+    vira markup.
+-->
+
+<script>
+  window.SemaUI = (function() {
+    var EMPTY_LABEL = "—";
+
+    function formatDateTime(value) {
+      if (!value) return EMPTY_LABEL;
+      var date = value instanceof Date ? value : new Date(value);
+      if (isNaN(date.getTime())) return String(value);
+      return date.toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      });
+    }
+
+    function clear(node) {
+      while (node && node.firstChild) node.removeChild(node.firstChild);
+      return node;
+    }
+
+    /**
+     * Linha única ocupando a tabela inteira, para comunicar ausência de dados.
+     * Uma tabela que simplesmente fica em branco não diz se está vazia,
+     * carregando ou quebrada.
+     */
+    function emptyRow(tbody, colspan, message, hint) {
+      var row = tbody.insertRow();
+      var cell = row.insertCell();
+      cell.colSpan = colspan;
+      cell.className = "table-empty";
+
+      var title = document.createElement("strong");
+      title.textContent = message;
+      cell.appendChild(title);
+
+      if (hint) {
+        var description = document.createElement("p");
+        description.textContent = hint;
+        cell.appendChild(description);
+      }
+      return row;
+    }
+
+    /**
+     * Renderiza uma coleção numa tbody.
+     * columns: [{ key, format }] — format recebe (valor, registro).
+     */
+    function renderRows(tbody, items, columns, options) {
+      var settings = options || {};
+      if (!tbody) return 0;
+      clear(tbody);
+
+      var list = Array.isArray(items) ? items : [];
+      if (!list.length) {
+        emptyRow(tbody, columns.length, settings.emptyMessage || "Nada por aqui ainda.", settings.emptyHint);
+        return 0;
+      }
+
+      list.forEach(function(item) {
+        var row = tbody.insertRow();
+        columns.forEach(function(column) {
+          var cell = row.insertCell();
+          var value = item ? item[column.key] : "";
+          if (typeof column.render === "function") {
+            column.render(cell, value, item);
+            return;
+          }
+          var text = typeof column.format === "function" ? column.format(value, item) : value;
+          cell.textContent = (text === null || text === undefined || text === "") ? EMPTY_LABEL : text;
+          if (column.className) cell.className = column.className;
+        });
+      });
+      return list.length;
+    }
+
+    /**
+     * Entrega um arquivo gerado no servidor.
+     * Revoga a object URL depois do clique — sem isso o blob fica retido na
+     * memória da aba até o recarregamento.
+     */
+    function downloadFile(filename, content, mimeType) {
+      var blob = new Blob([content], { type: mimeType || "text/csv;charset=utf-8;" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "download.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(function() { URL.revokeObjectURL(url); }, 0);
+    }
+
+    /**
+     * Executa uma ação assíncrona mantendo o botão em estado de carregamento
+     * e devolvendo o rótulo original mesmo em caso de falha.
+     */
+    function withButton(button, label, action) {
+      setButtonLoading(button, true, label);
+      return Promise.resolve()
+        .then(action)
+        .then(function(result) {
+          setButtonLoading(button, false);
+          return result;
+        })
+        .catch(function(error) {
+          setButtonLoading(button, false);
+          showServerMessage(error.message, "error");
+          throw error;
+        });
+    }
+
+    function debounce(func, delay) {
+      var timeout;
+      return function() {
+        var context = this;
+        var args = arguments;
+        window.clearTimeout(timeout);
+        timeout = window.setTimeout(function() { func.apply(context, args); }, delay || 250);
+      };
+    }
+
+    return {
+      formatDateTime: formatDateTime,
+      clear: clear,
+      emptyRow: emptyRow,
+      renderRows: renderRows,
+      downloadFile: downloadFile,
+      withButton: withButton,
+      debounce: debounce
+    };
+  })();
+</script>

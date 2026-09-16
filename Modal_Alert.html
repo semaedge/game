@@ -1,0 +1,121 @@
+<style>
+  .sema-dialog-backdrop {
+    position: fixed; inset: 0; z-index: 300; display: grid; place-items: center;
+    padding: 20px; background: rgba(2,10,7,.76); backdrop-filter: blur(10px);
+  }
+  .sema-dialog-backdrop[hidden] { display: none; }
+  .sema-dialog {
+    width: min(480px, 100%); padding: 24px; border: 1px solid var(--line);
+    border-radius: 20px; color: var(--ink);
+    background: linear-gradient(145deg, #122820, #0a1914);
+    box-shadow: 0 32px 90px rgba(0,0,0,.58);
+  }
+  .sema-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .sema-dialog-kicker {
+    display: block; margin-bottom: 7px; color: var(--accent);
+    font-size: .7rem; font-weight: 850; letter-spacing: .14em; text-transform: uppercase;
+  }
+  .sema-dialog h2 { margin: 0; font-size: clamp(1.45rem, 5vw, 2rem); }
+  .sema-dialog-message { margin: 18px 0 0; color: #c5d4cc; white-space: pre-wrap; }
+  .sema-dialog-close {
+    width: 40px; height: 40px; flex: 0 0 40px; border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px; color: var(--muted); background: rgba(255,255,255,.04);
+    cursor: pointer;
+  }
+  .sema-dialog-close:hover { color: var(--ink); border-color: var(--line); }
+  .sema-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  body.has-dialog { overflow: hidden; }
+  @media (max-width: 520px) {
+    .sema-dialog-backdrop { align-items: end; padding: 12px; }
+    .sema-dialog { border-radius: 20px 20px 14px 14px; }
+    .sema-dialog-actions .btn { flex: 1; }
+  }
+</style>
+
+<div class="sema-dialog-backdrop" id="alertDialogBackdrop" hidden>
+  <section
+    class="sema-dialog"
+    id="alertDialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="alertDialogTitle"
+    aria-describedby="alertDialogMessage"
+    tabindex="-1"
+  >
+    <div class="sema-dialog-header">
+      <div>
+        <span class="sema-dialog-kicker">Sema Edge</span>
+        <h2 id="alertDialogTitle">Aviso</h2>
+      </div>
+      <button class="sema-dialog-close" id="alertDialogClose" type="button" aria-label="Fechar aviso">×</button>
+    </div>
+    <p class="sema-dialog-message" id="alertDialogMessage"></p>
+    <div class="sema-dialog-actions">
+      <button class="btn btn-primary" id="alertDialogAccept" type="button">Entendi</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function() {
+    window.SemaDialogs = window.SemaDialogs || {};
+    var backdrop = document.getElementById("alertDialogBackdrop");
+    var dialog = document.getElementById("alertDialog");
+    var title = document.getElementById("alertDialogTitle");
+    var message = document.getElementById("alertDialogMessage");
+    var closeButton = document.getElementById("alertDialogClose");
+    var acceptButton = document.getElementById("alertDialogAccept");
+    var previousFocus = null;
+    var resolveAlert = null;
+
+    function closeAlert() {
+      if (backdrop.hidden) return;
+      backdrop.hidden = true;
+      document.body.classList.remove("has-dialog");
+      if (previousFocus && typeof previousFocus.focus === "function") previousFocus.focus();
+      if (resolveAlert) resolveAlert();
+      resolveAlert = null;
+    }
+
+    function onKeydown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeAlert();
+      }
+      if (event.key === "Tab") {
+        var focusable = [closeButton, acceptButton];
+        var index = focusable.indexOf(document.activeElement);
+        if (event.shiftKey && index <= 0) {
+          event.preventDefault();
+          focusable[focusable.length - 1].focus();
+        } else if (!event.shiftKey && index === focusable.length - 1) {
+          event.preventDefault();
+          focusable[0].focus();
+        }
+      }
+    }
+
+    window.SemaDialogs.alert = function(value, options) {
+      options = options || {};
+      if (!backdrop.hidden) closeAlert();
+      if (typeof window.SemaDialogs.closeConfirm === "function") {
+        window.SemaDialogs.closeConfirm();
+      }
+      previousFocus = document.activeElement;
+      title.textContent = String(options.title || "Aviso").slice(0, 100);
+      message.textContent = String(value || "Operação concluída.").slice(0, 2000);
+      backdrop.hidden = false;
+      document.body.classList.add("has-dialog");
+      window.setTimeout(function() { acceptButton.focus(); }, 0);
+      return new Promise(function(resolve) { resolveAlert = resolve; });
+    };
+    window.SemaDialogs.closeAlert = closeAlert;
+
+    closeButton.addEventListener("click", closeAlert);
+    acceptButton.addEventListener("click", closeAlert);
+    backdrop.addEventListener("click", function(event) {
+      if (event.target === backdrop) closeAlert();
+    });
+    dialog.addEventListener("keydown", onKeydown);
+  })();
+</script>

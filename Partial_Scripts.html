@@ -1,0 +1,15 @@
+<!-- Partial_Scripts.html -->
+<!--
+  Funcionalidade Principal: Contém a inclusão de scripts JavaScript globais que são necessários em todas as páginas do aplicativo, geralmente colocados no final do corpo HTML para otimização de carregamento.
+
+  Integrações:
+  - Layout.html: Incluído no layout base para garantir que os scripts globais estejam disponíveis.
+  - Scripts_Main.html: Inclui o script principal de comunicação com o Apps Script.
+
+  Uso:
+  Centraliza a inclusão de scripts JavaScript globais para facilitar a manutenção e garantir a consistência.
+-->
+
+<?!= include("Scripts_Main"); ?>
+<?!= include("Scripts_Api_Client"); ?>
+<?!= include("Scripts_Utils"); ?>

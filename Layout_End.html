@@ -1,0 +1,45 @@
+    </main>
+    <?!= include("Component_Footer"); ?>
+    </div>
+    <?!= include("Modal_Alert"); ?>
+    <?!= include("Modal_Confirm"); ?>
+    <?!= include("Partial_Scripts"); ?>
+    <?!= include("Scripts_Frontend_Audit"); ?>
+    <?!= include("HealthCheck"); ?>
+  <!-- fleet-method-guide:start -->
+<style>
+  .fleet-method-guide { box-sizing: border-box; flex: 0 0 auto; grid-column: 1 / -1; width: calc(100% - 2rem); max-width: 64rem; margin: 1rem auto; border: 1px solid currentColor; border-radius: .65rem; color: inherit; background: inherit; font: inherit; }
+  .fleet-method-guide > summary { cursor: pointer; padding: .75rem 1rem; min-height: 44px; box-sizing: border-box; font-weight: 600; overflow-wrap: anywhere; }
+  .fleet-method-guide > summary:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+  .fleet-method-guide .fleet-method-content { padding: 0 1rem 1rem; max-height: 50vh; overflow-y: auto; overscroll-behavior: contain; }
+  .fleet-method-guide p { margin: .5rem 0; line-height: 1.5; overflow-wrap: anywhere; }
+  .fleet-method-guide dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: .35rem; margin: .75rem 0 1rem; }
+  .fleet-method-guide dt { font-weight: 600; margin-top: .5rem; }
+  .fleet-method-guide dd { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+  @media print { .fleet-method-guide { display: none; } }
+</style>
+<details class="fleet-method-guide" data-project="sema_edge">
+  <summary>Como conduzir esta atividade</summary>
+  <div class="fleet-method-content">
+    <p>Sema Edge</p>
+    <section aria-label="Para quem participa">
+      <p><strong>Para quem participa</strong></p>
+      <dl>
+        <dt>Propósito</dt><dd>Planejar e revisar uma rota usando evidências do tabuleiro.</dd>
+        <dt>Ação</dt><dd>Prever a rota, executar movimentos e depurar a estratégia.</dd>
+        <dt>Fechamento</dt><dd>Comparar plano e resultado e registrar a próxima melhoria.</dd>
+      </dl>
+    </section>
+    <section aria-label="Para quem conduz a turma">
+      <p><strong>Para quem conduz a turma</strong></p>
+      <dl>
+        <dt>Propósito</dt><dd>Mediar raciocínio espacial, planejamento e revisão.</dd>
+        <dt>Ação</dt><dd>Acompanhar tentativas, pistas e estratégias dos grupos.</dd>
+        <dt>Fechamento</dt><dd>Promover comparação de soluções e justificativas.</dd>
+      </dl>
+    </section>
+  </div>
+</details>
+<!-- fleet-method-guide:end -->
+</body>
+</html>

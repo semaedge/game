@@ -1,0 +1,77 @@
+<!-- sema-edge-shared-wcag-style: consolidated source of truth -->
+<style id="fleet-mobile-wcag-aa">
+    /* Contrato FROTA: ergonomia S20 e WCAG 2.1 AA. */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    :is(button, [role="button"], input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+      min-width: 48px !important;
+      min-height: 48px !important;
+      touch-action: manipulation;
+    }
+  </style>
+<style id="ux-standards">
+  /* Contrato UX compartilhado entre os jogos: toque, foco, estados e mobile. */
+  :root { --ux-control-height: 44px; --ux-radius: 12px; --ux-focus: #baff4a; }
+  html { scroll-padding-top: 20px; }
+  :where(button, a[href], [role="button"]) { touch-action: manipulation; }
+  :where(button, a[href], [role="button"], input, select, textarea) { min-height: var(--ux-control-height); }
+  :where(button, a[href], [role="button"], input, select, textarea):focus-visible {
+    outline: 3px solid var(--ux-focus);
+    outline-offset: 3px;
+  }
+  :where(button:not(:disabled), [role="button"], .btn, .button, .botao-principal, .menu-button) {
+    transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+  }
+  :where(button:not(:disabled), [role="button"], .btn, .button, .botao-principal, .menu-button):active {
+    transform: translateY(1px);
+  }
+  :where(.card, .panel, .modal-card, .modal-content, .dialog-content) { border-radius: max(var(--ux-radius), 12px); }
+  :where(.toast, .alert, [role="alert"], [role="status"]) { overflow-wrap: anywhere; }
+  :where(button:disabled, input:disabled, select:disabled, textarea:disabled) { cursor: not-allowed; opacity: .68; }
+  :where([aria-busy="true"], .is-loading, .loading-state) { cursor: progress; }
+  :where(dialog[open], [role="dialog"]:not([hidden]), .modal:not(.hidden)) { overscroll-behavior: contain; }
+  :where(table) { max-width: 100%; }
+  @media (max-width: 640px) {
+    :where(.actions, .button-row, .form-actions, .modal-actions, .header-actions, .top-actions) {
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    :where(.card, .panel, .modal-card, .modal-content, .dialog-content) { max-width: calc(100vw - 24px); }
+    :where(input, select, textarea) { font-size: max(16px, 1rem); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :where(*, *::before, *::after) {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: .01ms !important;
+    }
+  }
+</style>
+<script>
+  // Comportamento UX comum: Escape fecha o diálogo visível.
+  (function () {
+    function installEscapeClose() {
+      if (document.documentElement.dataset.uxEscapeBound === 'true') return;
+      document.documentElement.dataset.uxEscapeBound = 'true';
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        var dialog = document.querySelector(
+          'dialog[open], [role="dialog"]:not([hidden]), .modal:not(.hidden), .modal[aria-hidden="false"]'
+        );
+        if (!dialog) return;
+        var close = dialog.querySelector(
+          '[data-action="close-modal"], [data-close], .modal-close, .close, [aria-label*="Fechar" i]'
+        );
+        if (close && !close.disabled) {
+          event.preventDefault();
+          close.click();
+        }
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', installEscapeClose, { once: true });
+    } else {
+      installEscapeClose();
+    }
+  }());
+</script>

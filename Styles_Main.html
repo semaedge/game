@@ -1,0 +1,239 @@
+<style>
+  :root {
+    --ink: #f2f7f4;
+    --muted: #9db1a7;
+    --bg: #07110e;
+    --surface: #0d1d18;
+    --surface-2: #122820;
+    --line: rgba(192, 255, 94, .16);
+    --accent: #baff4a;
+    --accent-strong: #93df24;
+    --cyan: #5eead4;
+    --warning: #ffca5c;
+    --danger: #ff6b6b;
+    --shadow: 0 24px 70px rgba(0, 0, 0, .35);
+    --radius: 22px;
+    --radius-sm: 13px;
+    --page: min(1160px, calc(100% - 40px));
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 12% 10%, rgba(94, 234, 212, .12), transparent 28rem),
+      radial-gradient(circle at 88% 24%, rgba(186, 255, 74, .10), transparent 24rem),
+      var(--bg);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .28;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(to bottom, black, transparent 80%);
+  }
+  a { color: inherit; }
+  button, input, select, textarea { font: inherit; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  img, canvas { max-width: 100%; }
+  h1, h2, h3, p { margin-top: 0; }
+  h1, h2, h3 { letter-spacing: -.035em; line-height: 1.08; }
+  h1 { font-size: clamp(2.7rem, 7vw, 6.6rem); }
+  h2 { font-size: clamp(2rem, 4vw, 3.5rem); }
+  h3 { font-size: 1.25rem; }
+  .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+  .app-main { flex: 1; width: 100%; }
+  .skip-link {
+    position: fixed; left: 18px; top: -80px; z-index: 100;
+    padding: 10px 15px; border-radius: 10px; background: var(--accent); color: #07110e;
+  }
+  .skip-link:focus { top: 12px; }
+  .container, .page-wrap { width: var(--page); margin: 42px auto; }
+  .container {
+    padding: clamp(22px, 4vw, 44px);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(145deg, rgba(18,40,32,.92), rgba(10,25,20,.92));
+    box-shadow: var(--shadow);
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 9px;
+    margin-bottom: 18px; color: var(--accent); font-size: .78rem;
+    font-weight: 800; letter-spacing: .15em; text-transform: uppercase;
+  }
+  .eyebrow::before { content: ""; width: 24px; height: 2px; background: currentColor; }
+  .muted { color: var(--muted); }
+  .text-accent { color: var(--accent); }
+  .grid { display: grid; gap: 20px; }
+  .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card {
+    padding: 24px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.025);
+  }
+  .card-kicker { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; }
+  .card-value { margin: 6px 0 0; color: var(--ink); font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 800; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    min-height: 48px; padding: 0 20px; border: 1px solid transparent;
+    border-radius: 999px; color: var(--ink); text-decoration: none; cursor: pointer;
+    font-weight: 750; transition: transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid rgba(186,255,74,.25); outline-offset: 2px;
+  }
+  .btn-primary { color: #07110e; background: var(--accent); box-shadow: 0 10px 28px rgba(186,255,74,.16); }
+  .btn-primary:hover { background: #cbff78; }
+  .btn-secondary { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.06); }
+  .btn-secondary:hover { border-color: var(--accent); background: rgba(186,255,74,.08); }
+  .btn-danger { background: rgba(255,107,107,.12); border-color: rgba(255,107,107,.28); color: #ff9c9c; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .form-group { margin-bottom: 18px; text-align: left; }
+  .form-group label { display: block; margin-bottom: 7px; color: #d9e6df; font-size: .9rem; font-weight: 650; }
+  input, select, textarea, .form-control {
+    width: 100%; min-height: 48px; padding: 11px 14px; color: var(--ink);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+    background: rgba(0,0,0,.22); transition: border-color .18s ease, box-shadow .18s ease;
+  }
+  textarea { min-height: 130px; resize: vertical; }
+  input::placeholder, textarea::placeholder { color: #6f887c; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(186,255,74,.08); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  table, .table, .leaderboard-table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 15px 18px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.07); }
+  th { color: var(--muted); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+  tbody tr:hover { background: rgba(186,255,74,.035); }
+  .empty-state { padding: 36px; text-align: center; color: var(--muted); }
+  /* Linha de tabela sem dados: comunica ausência em vez de deixar o corpo vazio. */
+  .table-empty { padding: 34px 18px; text-align: center; color: var(--muted); }
+  .table-empty strong { display: block; margin-bottom: 6px; color: var(--ink); }
+  .table-empty p { margin: 0; font-size: .86rem; }
+  tbody tr:has(> .table-empty):hover { background: transparent; }
+  /*
+    Conteúdo exclusivo para leitores de tela. Component_GameCanvas já usava
+    .sr-only, mas a classe não existia em nenhuma folha — o texto de ajuda do
+    tabuleiro aparecia visível na página.
+  */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px;
+    border: 1px solid var(--line); border-radius: 999px; color: var(--accent); font-size: .78rem;
+  }
+  .status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+  .toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 200; display: grid; gap: 10px; width: min(360px, calc(100% - 40px)); }
+  .toast {
+    padding: 15px 18px; border: 1px solid var(--line); border-radius: 14px;
+    background: #122820; box-shadow: var(--shadow); animation: toast-in .25s ease both;
+  }
+  .loading { opacity: .65; pointer-events: none; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
+  @media (max-width: 760px) {
+    :root { --page: min(100% - 24px, 1160px); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .container { margin: 22px auto; padding: 22px; }
+    .actions .btn { flex: 1 1 160px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+  }
+</style>
+<style>
+/* codex-s20-mobile-first: Samsung S20 / Chrome mobile baseline (360x800 CSS px) */
+@media screen {
+  :where(html) {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  :where(*, *::before, *::after) {
+    box-sizing: border-box;
+  }
+  :where(body) {
+    min-width: 320px;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  :where(main, .app, .page, .container, .content, .main-content, .dashboard, .view) {
+    max-width: 100%;
+  }
+  :where(img, video, canvas, svg) {
+    max-width: 100%;
+    height: auto;
+  }
+  :where(p, li, td, th, label, legend, button, a, h1, h2, h3, h4, h5, h6) {
+    overflow-wrap: anywhere;
+  }
+  :where(input, select, textarea, button) {
+    font: inherit;
+    max-width: 100%;
+  }
+  :where(input, select, textarea) {
+    font-size: max(16px, 1rem);
+  }
+  :where(button, [role="button"], input, select, textarea, a) {
+    touch-action: manipulation;
+  }
+  :where(.table-wrap, .table-wrapper, .table-responsive, .table-container, .responsive-table, .data-table-wrapper) {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 480px) {
+  :where(body) {
+    font-size: 16px;
+  }
+  :where(.grid, .cards, .dashboard-grid, .stats-grid, .form-grid, .filters-grid) {
+    grid-template-columns: 1fr !important;
+  }
+  :where(.toolbar, .actions, .button-row, .filters, .form-actions, .modal-actions, .header-actions) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  :where(.btn, button, input, select, textarea) {
+    min-height: 44px;
+  }
+  :where(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  :where(th, td) {
+    white-space: nowrap;
+  }
+  :where(.card, .panel, .modal, .dialog, .drawer) {
+    max-width: calc(100vw - 24px);
+  }
+}
+@media (max-width: 360px) {
+  :where(body) {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  :where(.card, .panel, .section, .modal-content, .dialog-content) {
+    padding: 12px;
+  }
+  :where(h1) {
+    font-size: clamp(1.45rem, 1.2rem + 2vw, 2rem);
+  }
+  :where(h2) {
+    font-size: clamp(1.2rem, 1rem + 1.4vw, 1.55rem);
+  }
+}
+</style>

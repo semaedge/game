@@ -1,0 +1,142 @@
+<?!= include("Layout"); ?>
+<?!= include("Styles_Admin"); ?>
+<?!= include("Component_AdminNav"); ?>
+
+<style>
+  .maturity-hero { display: grid; grid-template-columns: 220px 1fr; gap: 38px; align-items: center; margin-bottom: 22px; }
+  .score-ring {
+    width: 200px; aspect-ratio: 1; display: grid; place-items: center; position: relative;
+    border-radius: 50%; background: conic-gradient(var(--accent) calc(<?= maturity.score ?> * 1%), rgba(255,255,255,.07) 0);
+    box-shadow: 0 0 55px rgba(186,255,74,.08);
+  }
+  .score-ring::before { content: ""; position: absolute; inset: 15px; border-radius: 50%; background: var(--surface); }
+  .score-ring-content { position: relative; z-index: 1; text-align: center; }
+  .score-ring strong { display: block; font-size: 3.6rem; letter-spacing: -.07em; line-height: 1; }
+  .score-ring span { color: var(--muted); font-size: .76rem; letter-spacing: .12em; text-transform: uppercase; }
+  .maturity-level { display: inline-flex; margin-bottom: 14px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--accent); font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+  .category-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+  .category-card { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.025); }
+  .category-card strong { display: block; margin: 5px 0 10px; font-size: 1.8rem; }
+  .progress-track { height: 5px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+  .progress-bar { height: 100%; border-radius: inherit; background: var(--accent); }
+  .check-status { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem; font-weight: 750; }
+  .check-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .check-status.pass { color: var(--accent); }
+  .check-status.warning { color: var(--warning); }
+  .check-status.fail { color: var(--danger); }
+  .check-status.unknown { color: var(--muted); }
+  .coverage-note { margin: 0 0 14px; color: var(--muted); font-size: .84rem; }
+  .severity { padding: 4px 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; color: var(--muted); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
+  .recommendations { display: grid; gap: 12px; }
+  .recommendation { display: grid; grid-template-columns: 34px 1fr; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.025); }
+  .recommendation-index { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: #07110e; background: var(--warning); font-weight: 900; }
+  .recommendation h3 { margin-bottom: 5px; font-size: 1rem; }
+  .recommendation p { margin-bottom: 0; color: var(--muted); font-size: .9rem; }
+  @media (max-width: 920px) { .category-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 680px) { .maturity-hero { grid-template-columns: 1fr; } .score-ring { width: 170px; } .category-grid { grid-template-columns: 1fr; } }
+</style>
+
+<section class="page-wrap admin-container">
+  <div class="maturity-hero container" style="width:100%;margin:0">
+    <div class="score-ring" aria-label="Nota de maturidade <?= maturity.score ?> de 100">
+      <div class="score-ring-content">
+        <strong><?= maturity.score ?></strong>
+        <span>de 100</span>
+      </div>
+    </div>
+    <div>
+      <span class="maturity-level"><?= maturity.level.name ?></span>
+      <h2>Maturidade do backend</h2>
+      <p class="muted">Cada controle é verificado por uma sonda em runtime. A nota considera apenas os <?= maturity.verifiablePoints ?> pontos efetivamente verificáveis, de <?= maturity.totalPoints ?> possíveis.</p>
+      <p class="coverage-note">Cobertura de verificação: <?= maturity.coverage ?>%<? if (maturity.unverifiedPoints > 0) { ?> — <?= maturity.unverifiedPoints ?> ponto(s) fora do denominador por não serem observáveis em runtime<? } ?>.</p>
+      <? if (maturity.level.cappedByCriticalGaps) { ?>
+        <p style="color:var(--warning)"><strong><?= maturity.criticalGaps ?> lacuna(s) crítica(s)</strong> limitam o nível máximo atual a Gerenciado.</p>
+      <? } ?>
+      <? if (maturity.level.cappedByCoverage) { ?>
+        <p style="color:var(--warning)">Cobertura abaixo de 80% limita o nível máximo a Avançado.</p>
+      <? } ?>
+      <div class="actions">
+        <button id="runAssessment" class="btn btn-primary" type="button">Executar nova avaliação</button>
+        <span class="status-pill">Health: <?= maturity.health.status ?></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="category-grid">
+    <? maturity.categories.forEach(function(category) { ?>
+      <article class="category-card">
+        <span class="card-kicker"><?= category.name ?></span>
+        <strong><?= category.score ?>%</strong>
+        <div class="progress-track" aria-label="<?= category.score ?>%">
+          <div class="progress-bar" style="width:<?= category.score ?>%"></div>
+        </div>
+      </article>
+    <? }); ?>
+  </div>
+
+  <div class="grid grid-2" style="align-items:start">
+    <article class="container" style="width:100%;margin:0">
+      <span class="eyebrow">Próximos passos</span>
+      <h3>Recomendações prioritárias</h3>
+      <div class="recommendations">
+        <? if (!maturity.recommendations.length) { ?>
+          <p class="empty-state" role="status">Nenhuma recomendação pendente: os controles do backend estão cobertos.</p>
+        <? } else { maturity.recommendations.forEach(function(item, index) { ?>
+          <div class="recommendation">
+            <span class="recommendation-index"><?= index + 1 ?></span>
+            <div>
+              <span class="severity"><?= item.status === 'unknown' ? 'não verificado' : item.severity ?></span>
+              <h3><?= item.title ?></h3>
+              <p><?= item.evidence ?></p>
+              <p><?= item.action ?></p>
+            </div>
+          </div>
+        <? }); } ?>
+      </div>
+    </article>
+
+    <article class="container" style="width:100%;margin:0">
+      <span class="eyebrow">Resumo</span>
+      <h3>Evidências da avaliação</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Controle</th><th>Status</th><th>Pontos</th></tr></thead>
+          <tbody>
+            <? if (!maturity.checks.length) { ?>
+              <tr><td colspan="3"><span class="empty-state" role="status">Nenhum controle foi retornado pela avaliação.</span></td></tr>
+            <? } else { maturity.checks.forEach(function(check) { ?>
+              <tr title="<?= check.evidence ?>">
+                <td><?= check.title ?></td>
+                <td>
+                  <span class="check-status <?= check.status ?>">
+                    <? if (check.status === 'pass') { ?>OK<? } else if (check.status === 'fail') { ?>Crítico<? } else if (check.status === 'unknown') { ?>Não verificado<? } else { ?>Atenção<? } ?>
+                  </span>
+                </td>
+                <td><?= check.status === 'unknown' ? '—' : check.earned + '/' + check.weight ?></td>
+              </tr>
+            <? }); } ?>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin:14px 0 0;font-size:.78rem">Framework <?= maturity.frameworkVersion ?> • avaliação em <?= maturity.durationMs ?> ms • sondas de escrita <?= maturity.writeProbes ? 'ativas' : 'desativadas' ?></p>
+    </article>
+  </div>
+</section>
+
+<script>
+  document.getElementById("runAssessment").addEventListener("click", function() {
+    var button = this;
+    setButtonLoading(button, true, "Avaliando…");
+    SemaAPI.call("admin.maturity.backend")
+      .then(function(response) {
+        showServerMessage("Avaliação concluída: " + response.data.score + "/100.");
+        window.setTimeout(function() { window.location.reload(); }, 650);
+      })
+      .catch(function(error) {
+        setButtonLoading(button, false);
+        showServerMessage(error.message, "error");
+      });
+  });
+</script>
+
+<?!= include("Layout_End"); ?>

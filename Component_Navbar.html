@@ -1,0 +1,62 @@
+<style>
+  .navbar {
+    position: sticky; top: 0; z-index: 50; width: 100%;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    background: rgba(7,17,14,.82); backdrop-filter: blur(18px);
+  }
+  .navbar-inner {
+    width: var(--page); min-height: 74px; margin: auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 22px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; font-weight: 850; letter-spacing: -.03em; }
+  .brand-mark {
+    width: 34px; height: 34px; display: grid; place-items: center;
+    border-radius: 10px 10px 10px 3px; color: #07110e; background: var(--accent);
+    box-shadow: 0 0 24px rgba(186,255,74,.16); transform: rotate(-4deg);
+  }
+  .nav-links { display: flex; align-items: center; gap: 4px; }
+  .nav-links a {
+    padding: 9px 12px; border-radius: 999px; color: var(--muted);
+    text-decoration: none; font-size: .9rem; font-weight: 650;
+  }
+  .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--ink); background: rgba(255,255,255,.06); }
+  .nav-links .nav-cta { color: #07110e; background: var(--accent); }
+  .nav-toggle { display: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: transparent; }
+  @media (max-width: 760px) {
+    .navbar-inner { min-height: 66px; position: relative; }
+    .nav-toggle { display: grid; place-items: center; }
+    .nav-links {
+      display: none; position: absolute; left: 0; right: 0; top: 58px;
+      padding: 12px; border: 1px solid var(--line); border-radius: 16px;
+      background: #0d1d18; box-shadow: var(--shadow); align-items: stretch; flex-direction: column;
+    }
+    .nav-links.is-open { display: flex; }
+    .nav-links a { width: 100%; padding: 12px 14px; }
+  }
+</style>
+
+<nav class="navbar" aria-label="Navegação principal">
+  <div class="navbar-inner">
+    <a class="brand" href="?page=home" aria-label="Sema Edge, início">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span><?!= APP_NAME ?></span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Abrir menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="?page=home">Início</a>
+      <a href="?page=leaderboard">Ranking</a>
+      <? if (Auth_Session.isLoggedIn()) { ?>
+        <a href="?page=dashboard">Painel</a>
+        <a href="?page=maps">Explorar</a>
+        <a href="?page=profile">Perfil</a>
+        <? if (Auth_Session.isAdmin()) { ?>
+          <a href="?page=admin-users">Admin</a>
+        <? } ?>
+        <a href="?page=login" data-action="logout">Sair</a>
+      <? } else { ?>
+        <a href="?page=login">Entrar</a>
+        <a class="nav-cta" href="?page=register">Criar conta</a>
+      <? } ?>
+    </div>
+  </div>
+</nav>

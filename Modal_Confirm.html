@@ -1,0 +1,92 @@
+<div class="sema-dialog-backdrop" id="confirmDialogBackdrop" hidden>
+  <section
+    class="sema-dialog"
+    id="confirmDialog"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="confirmDialogTitle"
+    aria-describedby="confirmDialogMessage"
+    tabindex="-1"
+  >
+    <div class="sema-dialog-header">
+      <div>
+        <span class="sema-dialog-kicker">Confirme a ação</span>
+        <h2 id="confirmDialogTitle">Continuar?</h2>
+      </div>
+      <button class="sema-dialog-close" id="confirmDialogClose" type="button" aria-label="Cancelar e fechar">×</button>
+    </div>
+    <p class="sema-dialog-message" id="confirmDialogMessage"></p>
+    <div class="sema-dialog-actions">
+      <button class="btn btn-secondary" id="confirmDialogCancel" type="button">Cancelar</button>
+      <button class="btn btn-danger" id="confirmDialogAccept" type="button">Confirmar</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function() {
+    window.SemaDialogs = window.SemaDialogs || {};
+    var backdrop = document.getElementById("confirmDialogBackdrop");
+    var dialog = document.getElementById("confirmDialog");
+    var title = document.getElementById("confirmDialogTitle");
+    var message = document.getElementById("confirmDialogMessage");
+    var closeButton = document.getElementById("confirmDialogClose");
+    var cancelButton = document.getElementById("confirmDialogCancel");
+    var acceptButton = document.getElementById("confirmDialogAccept");
+    var previousFocus = null;
+    var resolveConfirm = null;
+
+    function finish(result) {
+      if (backdrop.hidden) return;
+      backdrop.hidden = true;
+      document.body.classList.remove("has-dialog");
+      if (previousFocus && typeof previousFocus.focus === "function") previousFocus.focus();
+      if (resolveConfirm) resolveConfirm(Boolean(result));
+      resolveConfirm = null;
+    }
+
+    function onKeydown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish(false);
+      }
+      if (event.key === "Tab") {
+        var focusable = [closeButton, cancelButton, acceptButton];
+        var index = focusable.indexOf(document.activeElement);
+        if (event.shiftKey && index <= 0) {
+          event.preventDefault();
+          focusable[focusable.length - 1].focus();
+        } else if (!event.shiftKey && index === focusable.length - 1) {
+          event.preventDefault();
+          focusable[0].focus();
+        }
+      }
+    }
+
+    window.SemaDialogs.confirm = function(value, options) {
+      options = options || {};
+      if (!backdrop.hidden) finish(false);
+      if (typeof window.SemaDialogs.closeAlert === "function") {
+        window.SemaDialogs.closeAlert();
+      }
+      previousFocus = document.activeElement;
+      title.textContent = String(options.title || "Continuar?").slice(0, 100);
+      message.textContent = String(value || "Confirme para continuar.").slice(0, 2000);
+      acceptButton.textContent = String(options.confirmLabel || "Confirmar").slice(0, 40);
+      acceptButton.className = "btn " + (options.danger === false ? "btn-primary" : "btn-danger");
+      backdrop.hidden = false;
+      document.body.classList.add("has-dialog");
+      window.setTimeout(function() { cancelButton.focus(); }, 0);
+      return new Promise(function(resolve) { resolveConfirm = resolve; });
+    };
+    window.SemaDialogs.closeConfirm = function() { finish(false); };
+
+    closeButton.addEventListener("click", function() { finish(false); });
+    cancelButton.addEventListener("click", function() { finish(false); });
+    acceptButton.addEventListener("click", function() { finish(true); });
+    backdrop.addEventListener("click", function(event) {
+      if (event.target === backdrop) finish(false);
+    });
+    dialog.addEventListener("keydown", onKeydown);
+  })();
+</script>

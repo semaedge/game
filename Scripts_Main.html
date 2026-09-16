@@ -1,0 +1,156 @@
+<script>
+  var APP_BASE_URL = <?!= JSON.stringify(getScriptUrl()) ?>;
+
+  function redirectTo(url) {
+    var destination = window.SemaAPI ? SemaAPI.withSession(url) : url;
+    // Destino relativo assumiria o domínio do iframe sandbox; a base /exec
+    // garante que window.top saia para o próprio web app.
+    if (APP_BASE_URL && destination.charAt(0) === "?") {
+      destination = APP_BASE_URL + destination;
+    }
+    window.top.location.href = destination;
+  }
+
+  function showServerMessage(message, type) {
+    var region = document.querySelector(".toast-region");
+    if (!region) {
+      region = document.createElement("div");
+      region.className = "toast-region";
+      region.setAttribute("aria-live", "polite");
+      document.body.appendChild(region);
+    }
+    var toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message || "Operação concluída.";
+    if (type === "error") toast.style.borderColor = "rgba(255,107,107,.42)";
+    region.appendChild(toast);
+    window.setTimeout(function() { toast.remove(); }, 4200);
+  }
+
+  function setButtonLoading(button, loading, label) {
+    if (!button) return;
+    if (loading) {
+      button.dataset.originalLabel = button.textContent;
+      button.textContent = label || "Processando…";
+      button.classList.add("loading");
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+    } else {
+      button.textContent = button.dataset.originalLabel || button.textContent;
+      button.classList.remove("loading");
+      button.disabled = false;
+      button.setAttribute("aria-busy", "false");
+    }
+  }
+
+  function showAlertModal(message, title) {
+    if (window.SemaDialogs && typeof window.SemaDialogs.alert === "function") {
+      return window.SemaDialogs.alert(message, { title: title || "Aviso" });
+    }
+    showServerMessage((title ? title + ": " : "") + message);
+    return Promise.resolve();
+  }
+
+  function showConfirmModal(message, title, callback) {
+    if (window.SemaDialogs && typeof window.SemaDialogs.confirm === "function") {
+      var conf = window.SemaDialogs.confirm(message, { title: title || "Continuar?" });
+      if (typeof callback === "function") conf.then(callback);
+      return conf;
+    }
+
+    return new Promise(function(resolve) {
+      var existing = document.getElementById("sema-confirm-overlay");
+      if (existing) existing.remove();
+
+      var overlay = document.createElement("div");
+      overlay.id = "sema-confirm-overlay";
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:99999;padding:16px;";
+      overlay.innerHTML = `
+        <div style="background:#1a2332;color:#e2e8f0;border:1.5px solid rgba(255,255,255,0.15);border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 16px 36px rgba(0,0,0,0.5);">
+          <h3 style="margin:0 0 10px;font-size:1.15rem;color:#38bdf8;">${title || "Confirmação"}</h3>
+          <p style="margin:0 0 18px;font-size:0.9rem;color:#94a3b8;line-height:1.45;">${message || "Deseja continuar?"}</p>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button type="button" class="btn" id="sema-cancel-btn" style="padding:8px 16px;background:rgba(255,255,255,0.08);color:#e2e8f0;border:none;border-radius:8px;cursor:pointer;">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="sema-ok-btn" style="padding:8px 18px;background:#0284c7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Confirmar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      var close = function(val) {
+        overlay.remove();
+        if (typeof callback === "function") callback(val);
+        resolve(val);
+      };
+
+      document.getElementById("sema-cancel-btn").addEventListener("click", function() { close(false); });
+      document.getElementById("sema-ok-btn").addEventListener("click", function() { close(true); });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    var currentParams = new URLSearchParams(window.location.search);
+    if (window.SemaAPI &&
+        !currentParams.get("session") &&
+        SemaAPI.getSessionToken()) {
+      redirectTo(window.location.search || "?page=home");
+      return;
+    }
+
+    // Links internos saem do iframe via target="_top": precisam da URL /exec
+    // absoluta pelo mesmo motivo que redirectTo().
+    document.querySelectorAll("a[href^='?']").forEach(function(link) {
+      var href = link.getAttribute("href");
+      if (window.SemaAPI) href = SemaAPI.withSession(href);
+      link.setAttribute("href", APP_BASE_URL ? APP_BASE_URL + href : href);
+    });
+    var toggle = document.querySelector(".nav-toggle");
+    var links = document.querySelector(".nav-links");
+    if (toggle && links) {
+      function setNavOpen(open, restoreFocus) {
+        links.classList.toggle("is-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
+        if (!open && restoreFocus) toggle.focus();
+      }
+
+      toggle.addEventListener("click", function() {
+        setNavOpen(toggle.getAttribute("aria-expanded") !== "true", false);
+      });
+      links.addEventListener("click", function(event) {
+        if (event.target.closest("a")) setNavOpen(false, false);
+      });
+      document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
+          event.preventDefault();
+          setNavOpen(false, true);
+        }
+      });
+      document.addEventListener("click", function(event) {
+        if (toggle.getAttribute("aria-expanded") === "true" &&
+            !toggle.contains(event.target) && !links.contains(event.target)) {
+          setNavOpen(false, false);
+        }
+      });
+    }
+
+    var params = new URLSearchParams(window.location.search);
+    var current = params.get("page") || "home";
+    document.querySelectorAll(".nav-links a, .admin-nav a, .explorer-nav a").forEach(function(link) {
+      var href = link.getAttribute("href") || "";
+      var linkPage = new URL(href, window.location.href).searchParams.get("page") || "home";
+      if (linkPage === current) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    });
+
+    var logout = document.querySelector("[data-action='logout']");
+    if (logout) {
+      logout.addEventListener("click", function(event) {
+        event.preventDefault();
+        SemaAPI.call("auth.logout", {}, { redirectOnAuth: false })
+          .then(function() { redirectTo("?page=login"); })
+          .catch(function(error) { showServerMessage(error.message, "error"); });
+      });
+    }
+  });
+</script>

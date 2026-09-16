@@ -1,0 +1,37 @@
+<!-- Template_Email_Alert.html -->
+<!--
+  Funcionalidade Principal: Define o template HTML para e-mails de alerta enviados pelo sistema.
+
+  Integrações:
+  - Email_Service.gs: Utilizado para renderizar e enviar este template.
+
+  Uso:
+  Fornece um formato consistente para e-mails de alerta, que podem ser usados para notificar administradores sobre erros ou usuários sobre eventos importantes.
+-->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+  .email-container { max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 5px solid #dc3545; }
+  h1 { color: #dc3545; }
+  p { line-height: 1.6; color: #333; }
+</style>
+  
+</head>
+<body>
+  <div class="email-container">
+    <h1>Alerta do Sistema - <?!= APP_NAME ?></h1>
+    <p>Prezado(a) administrador(a),</p>
+    <p>Foi gerado um alerta no sistema:</p>
+    <p><strong>Tipo de Alerta:</strong> <?= alertType ?></p>
+    <p><strong>Mensagem:</strong> <?= alertMessage ?></p>
+    <p><strong>Detalhes:</strong> <?= alertDetails ?></p>
+    <p>Por favor, verifique o sistema o mais rápido possível.</p>
+    <p>Atenciosamente,<br>A Equipe de Suporte <?!= APP_NAME ?></p>
+  </div>
+</body>
+</html>

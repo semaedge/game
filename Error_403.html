@@ -1,0 +1,42 @@
+<!-- Error_403.html -->
+<!--
+  Servida por App.gs quando há sessão ativa, mas sem permissão administrativa.
+
+  Nota desta revisão: o texto anterior dizia que "a avaliação de maturidade
+  está disponível apenas para administradores". Esta tela atende cinco rotas
+  (usuários, logs, configurações e as duas avaliações), então a mensagem estava
+  errada na maioria dos casos. Agora ela nomeia o destino recusado e oferece
+  saídas que a pessoa realmente pode acessar.
+-->
+
+<?!= include("Layout"); ?>
+
+<? var deniedLabel = (typeof requestedLabel === 'undefined' || !requestedLabel) ? '' : String(requestedLabel); ?>
+
+<section class="page-wrap">
+  <div class="container" style="max-width:760px;text-align:center;padding-block:70px">
+    <span class="eyebrow">Erro 403</span>
+    <h2>Acesso restrito.</h2>
+
+    <? if (deniedLabel) { ?>
+      <p class="muted">
+        <strong><?= deniedLabel ?></strong> faz parte da área administrativa e
+        sua conta não tem essa permissão.
+      </p>
+    <? } else { ?>
+      <p class="muted">Esta área é restrita a administradores e sua conta não tem essa permissão.</p>
+    <? } ?>
+
+    <p class="muted" style="font-size:.86rem">
+      Se você deveria ter acesso, peça a um administrador para verificar o
+      e-mail administrativo configurado no sistema.
+    </p>
+
+    <div class="actions" style="justify-content:center">
+      <a href="?page=dashboard" class="btn btn-primary">Ir para o painel</a>
+      <a href="?page=home" class="btn btn-secondary">Voltar ao início</a>
+    </div>
+  </div>
+</section>
+
+<?!= include("Layout_End"); ?>

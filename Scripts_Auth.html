@@ -1,0 +1,92 @@
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    function setFormLoading(form, loading) {
+      form.setAttribute("aria-busy", loading ? "true" : "false");
+    }
+
+    function showAuthMessage(form, message, type) {
+      var feedback = form.querySelector(".auth-feedback");
+      if (!feedback) {
+        showServerMessage(message, type);
+        return;
+      }
+      feedback.classList.toggle("success", type === "success");
+      feedback.textContent = message || "";
+    }
+
+    document.querySelectorAll("[data-password-toggle]").forEach(function(button) {
+      button.addEventListener("click", function() {
+        var input = document.getElementById(button.getAttribute("data-password-toggle"));
+        if (!input) return;
+        var showing = input.type === "text";
+        input.type = showing ? "password" : "text";
+        var icon = button.querySelector(".material-icons");
+        if (icon) icon.textContent = showing ? "visibility" : "visibility_off";
+        else button.textContent = showing ? "Mostrar" : "Ocultar";
+        button.setAttribute("aria-pressed", showing ? "false" : "true");
+        button.setAttribute("aria-label", (showing ? "Mostrar " : "Ocultar ") +
+          (input.id === "passwordConfirm" ? "confirmação da senha" : "senha"));
+        input.focus();
+      });
+    });
+
+    var loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+      loginForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+        var button = loginForm.querySelector("button[type='submit']");
+        showAuthMessage(loginForm, "");
+        setFormLoading(loginForm, true);
+        setButtonLoading(button, true, "Entrando…");
+        SemaAPI.call("auth.login", {
+          username: loginForm.username.value.trim(),
+          password: loginForm.password.value
+        }, { redirectOnAuth: false })
+          .then(function() {
+            redirectTo("?page=dashboard");
+          })
+          .catch(function(error) {
+            setFormLoading(loginForm, false);
+            setButtonLoading(button, false);
+            showAuthMessage(loginForm, error.message || "Não foi possível entrar.", "error");
+          });
+      });
+    }
+
+    var registerForm = document.getElementById("registerForm");
+    if (registerForm) {
+      var passwordConfirm = registerForm.elements.passwordConfirm;
+      passwordConfirm.addEventListener("input", function() {
+        passwordConfirm.setCustomValidity("");
+      });
+      registerForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+        if (registerForm.password.value !== passwordConfirm.value) {
+          passwordConfirm.setCustomValidity("As senhas não coincidem.");
+          passwordConfirm.reportValidity();
+          passwordConfirm.focus();
+          showAuthMessage(registerForm, "As senhas não coincidem.", "error");
+          return;
+        }
+        var button = registerForm.querySelector("button[type='submit']");
+        showAuthMessage(registerForm, "");
+        setFormLoading(registerForm, true);
+        setButtonLoading(button, true, "Criando conta…");
+        SemaAPI.call("auth.register", {
+          username: registerForm.username.value.trim(),
+          password: registerForm.password.value,
+          email: registerForm.email.value.trim()
+        }, { redirectOnAuth: false })
+          .then(function() {
+            showAuthMessage(registerForm, "Conta criada. Redirecionando para o login…", "success");
+            window.setTimeout(function() { redirectTo("?page=login"); }, 900);
+          })
+          .catch(function(error) {
+            setFormLoading(registerForm, false);
+            setButtonLoading(button, false);
+            showAuthMessage(registerForm, error.message || "Não foi possível criar a conta.", "error");
+          });
+      });
+    }
+  });
+</script>

@@ -1,0 +1,637 @@
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var config = window.SEMA_GAME;
+    var canvas = document.getElementById("gameCanvas");
+    var context = canvas.getContext("2d");
+    var canvasShell = document.getElementById("gameCanvasShell");
+    var canvasStatus = document.getElementById("gameCanvasStatus");
+    var original = config.mapData.structure.slice();
+    var grid, player, crates, targets, moves, completed, solved, restarts, routeSteps, startedAt, lastSavedScoreId;
+    var cellSize = 64;
+    var assetConfig = config.assets || {};
+    var images = {};
+    var assetPending = 0;
+    var assetFailures = 0;
+    var roundNumber = 0;
+    var assetStatus = document.getElementById("gameAssetStatus");
+    var directions = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
+    var planField = document.getElementById("routePlan");
+    var reflectionField = document.getElementById("routeReflection");
+    var journalStatus = document.getElementById("routeJournalStatus");
+    var saveEvidenceButton = document.getElementById("saveRouteEvidence");
+    var journalStoragePrefix = "sema_route_v1_" + String(config.journalKey || "unscoped") + "_" + String(config.initialStage);
+    function journalStorageKey(field) { return journalStoragePrefix + "_" + field; }
+    try {
+      if (planField) planField.value = localStorage.getItem(journalStorageKey("plan")) || "";
+      if (reflectionField) reflectionField.value = localStorage.getItem(journalStorageKey("reflection")) || "";
+      var initialReplyField = document.getElementById("strategyStudentReply");
+      if (initialReplyField) initialReplyField.value = localStorage.getItem(journalStorageKey("strategy_reply")) || "";
+    } catch (ignore) { /* armazenamento local opcional */ }
+
+    function persistJournal() {
+      try {
+        localStorage.setItem(journalStorageKey("plan"), planField ? planField.value : "");
+        localStorage.setItem(journalStorageKey("reflection"), reflectionField ? reflectionField.value : "");
+      } catch (ignore) { /* O jogo continua sem armazenamento local. */ }
+    }
+    if (planField) planField.addEventListener("input", persistJournal);
+    if (reflectionField) reflectionField.addEventListener("input", persistJournal);
+
+    function key(x, y) { return x + "," + y; }
+    function assetUrl(value) {
+      if (typeof value !== "string" || !value) return null;
+      try {
+        var url = new URL(value, window.location.href);
+        if (url.protocol === "https:" || (url.protocol === "http:" && url.origin === window.location.origin)) return url.href;
+      } catch (ignore) { /* URL inválida usa as formas do tabuleiro. */ }
+      return null;
+    }
+
+    function updateAssetStatus() {
+      var loaded = Object.keys(images).length;
+      canvas.dataset.assetState = assetPending ? "loading" : loaded ? (assetFailures ? "partial" : "ready") : "fallback";
+      if (assetStatus) assetStatus.textContent = assetPending
+        ? "Carregando ilustrações… Você já pode jogar."
+        : assetFailures || !loaded
+          ? "Algumas ilustrações estão indisponíveis. As formas e os símbolos mantêm o mapa jogável."
+          : "Ilustrações carregadas. Bandeiras marcam os objetivos; ✓ indica bloco entregue.";
+    }
+
+    function loadImage(name, value) {
+      var resolved = assetUrl(value);
+      if (!resolved) return;
+      var img = new Image();
+      assetPending += 1;
+      updateAssetStatus();
+      img.onload = function() {
+        images[name] = img;
+        assetPending -= 1;
+        updateAssetStatus();
+        draw();
+      };
+      img.onerror = function() {
+        assetPending -= 1;
+        assetFailures += 1;
+        updateAssetStatus();
+      };
+      img.src = resolved;
+    }
+
+    function loadAssets() {
+      var fallbackUrl = assetUrl(assetConfig.backgroundFallback);
+      if (fallbackUrl) {
+        var fallbackImg = new Image();
+        fallbackImg.onload = function() {
+          images.fallbackBackground = fallbackImg;
+          draw();
+        };
+        fallbackImg.src = fallbackUrl;
+      }
+      ["tileset", "player", "box", "goal", "wall"].forEach(function(name) { loadImage(name, assetConfig[name]); });
+      updateAssetStatus();
+    }
+
+    function announceMovement(message) {
+      if (!canvasStatus) return;
+      canvasStatus.textContent = message;
+      canvasStatus.style.opacity = "1";
+    }
+
+    function updateCanvasDescription() {
+      var placed = 0;
+      targets.forEach(function(target) { if (crates.has(target)) placed += 1; });
+      canvas.setAttribute(
+        "aria-label",
+        "Tabuleiro " + config.mapData.name + ". Explorador na linha " +
+          (player.y + 1) + ", coluna " + (player.x + 1) + ". " + placed +
+          " de " + targets.size + " objetivos preenchidos. " + moves + " movimentos."
+      );
+    }
+
+    function reset() {
+      roundNumber += 1;
+      if (canvasShell) canvasShell.setAttribute("aria-busy", "true");
+      if (canvasStatus) {
+        canvasStatus.textContent = "Preparando o mapa…";
+        canvasStatus.style.opacity = "";
+      }
+      grid = original.map(function(row) { return row.split(""); });
+      crates = new Set();
+      targets = new Set();
+      moves = 0;
+      startedAt = Date.now();
+      completed = false;
+      solved = false;
+      restarts = (restarts || 0) + (routeSteps && routeSteps.length ? 1 : 0);
+      routeSteps = [];
+      document.getElementById("gameCompleteActions").hidden = true;
+      document.getElementById("nextStageLink").hidden = true;
+      var stratCard = document.getElementById("strategyFeedbackCard");
+      if (stratCard) stratCard.hidden = true;
+      var btnStrat = document.getElementById("btnStrategyFeedback");
+      if (btnStrat) {
+        btnStrat.hidden = true;
+        btnStrat.disabled = false;
+        btnStrat.textContent = "Conversar sobre minha estratégia";
+      }
+      saveEvidenceButton.disabled = false;
+      saveEvidenceButton.hidden = false;
+      saveEvidenceButton.textContent = "Registrar conclusão";
+      grid.forEach(function(row, y) {
+        row.forEach(function(cell, x) {
+          if (cell === "@") { player = { x: x, y: y }; grid[y][x] = " "; }
+          if (cell === "$" || cell === "*") { crates.add(key(x,y)); grid[y][x] = " "; }
+          if (cell === "." || cell === "*") { targets.add(key(x,y)); grid[y][x] = " "; }
+        });
+      });
+      canvas.width = Math.max.apply(null, grid.map(function(row) { return row.length; })) * cellSize;
+      canvas.height = grid.length * cellSize;
+      draw();
+      updatePanel();
+      if (canvasShell) canvasShell.removeAttribute("aria-busy");
+      if (canvasStatus) {
+        canvasStatus.textContent = "Mapa pronto. Você pode planejar ou se movimentar.";
+        canvasStatus.style.opacity = "1";
+      }
+    }
+
+    function roundedRect(x, y, w, h, radius) {
+      context.beginPath();
+      context.roundRect(x, y, w, h, radius);
+      context.fill();
+    }
+
+    function sprite(name, x, y, inset) {
+      var img = images[name];
+      if (!img) return false;
+      var size = cellSize - inset * 2;
+      var scale = Math.min(size / img.naturalWidth, size / img.naturalHeight);
+      var width = img.naturalWidth * scale, height = img.naturalHeight * scale;
+      context.drawImage(img, x + (cellSize - width) / 2, y + (cellSize - height) / 2, width, height);
+      return true;
+    }
+
+    function draw() {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      var background = images.background || images.fallbackBackground;
+      if (background) {
+        var cover = Math.max(canvas.width / background.naturalWidth, canvas.height / background.naturalHeight);
+        var width = background.naturalWidth * cover, height = background.naturalHeight * cover;
+        context.drawImage(background, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+      }
+      var crop = assetConfig.tileCrop;
+      var hasCrop = Array.isArray(crop) && crop.length === 4 && crop.every(function(n) { return typeof n === "number" && isFinite(n) && n >= 0 && n <= 1; }) && crop[2] > 0 && crop[3] > 0 && crop[0] + crop[2] <= 1 && crop[1] + crop[3] <= 1;
+      grid.forEach(function(row, y) {
+        row.forEach(function(cell, x) {
+          var px = x * cellSize, py = y * cellSize;
+          context.fillStyle = (x + y) % 2 ? "rgba(16,37,29,.86)" : "rgba(13,32,25,.86)";
+          context.fillRect(px, py, cellSize, cellSize);
+          if (cell !== "#" && images.tileset && hasCrop) {
+            context.save();
+            context.globalAlpha = 0.8;
+            context.drawImage(images.tileset,
+              crop[0] * images.tileset.naturalWidth, crop[1] * images.tileset.naturalHeight,
+              crop[2] * images.tileset.naturalWidth, crop[3] * images.tileset.naturalHeight,
+              px + 1, py + 1, cellSize - 2, cellSize - 2);
+            context.restore();
+          }
+          if (cell === "#") {
+            if (!sprite("wall", px, py, 0)) {
+              context.fillStyle = "#1d3b30";
+              roundedRect(px + 3, py + 3, cellSize - 6, cellSize - 6, 10);
+              context.fillStyle = "rgba(186,255,74,.08)";
+              context.fillRect(px + 10, py + 10, cellSize - 20, 3);
+            }
+          }
+          if (targets.has(key(x,y))) {
+            context.fillStyle = "rgba(7,17,14,.6)";
+            roundedRect(px + 5, py + 5, cellSize - 10, cellSize - 10, 10);
+            if (!sprite("goal", px, py, 0)) {
+              context.strokeStyle = "#5eead4";
+              context.lineWidth = 4;
+              context.beginPath();
+              context.arc(px + cellSize/2, py + cellSize/2, cellSize*.19, 0, Math.PI*2);
+              context.stroke();
+            }
+          }
+          if (crates.has(key(x,y))) {
+            if (!sprite("box", px, py, 0)) {
+              context.fillStyle = targets.has(key(x,y)) ? "#5eead4" : "#baff4a";
+              roundedRect(px + 10, py + 10, cellSize - 20, cellSize - 20, 11);
+              context.fillStyle = "#07110e";
+              context.font = "800 20px system-ui";
+              context.textAlign = "center";
+              context.textBaseline = "middle";
+              context.fillText("E", px + cellSize/2, py + cellSize/2);
+            }
+            if (targets.has(key(x,y))) {
+              context.fillStyle = "#5eead4";
+              roundedRect(px + 38, py + 2, 24, 24, 8);
+              context.fillStyle = "#07110e";
+              context.font = "900 19px system-ui";
+              context.textAlign = "center";
+              context.textBaseline = "middle";
+              context.fillText("✓", px + 50, py + 14);
+            }
+          }
+        });
+      });
+      var pX = player.x * cellSize, pY = player.y * cellSize;
+      context.fillStyle = images.player ? "rgba(7,17,14,.5)" : "#f2f7f4";
+      context.beginPath();
+      context.arc(pX + cellSize/2, pY + cellSize/2, cellSize*.27, 0, Math.PI*2);
+      context.fill();
+      if (!sprite("player", pX, pY, 0)) {
+        context.fillStyle = "#07110e";
+        context.font = "900 19px system-ui";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText("S", pX + cellSize/2, pY + cellSize/2);
+      }
+    }
+
+    function isWall(x, y) {
+      return !grid[y] || grid[y][x] === undefined || grid[y][x] === "#";
+    }
+
+    function move(direction) {
+      if (completed || solved) return;
+      var planText = planField ? planField.value.trim() : "";
+      if (planText.length < 8) {
+        if (journalStatus) journalStatus.textContent = "Antes de mover, descreva seu plano em pelo menos 8 caracteres.";
+        if (planField) planField.focus();
+        return;
+      }
+      var delta = directions[direction];
+      var nx = player.x + delta[0], ny = player.y + delta[1];
+      if (isWall(nx, ny)) {
+        announceMovement("Caminho bloqueado. Tente outra direção.");
+        return;
+      }
+      var nextKey = key(nx, ny);
+      if (crates.has(nextKey)) {
+        var bx = nx + delta[0], by = ny + delta[1], beyondKey = key(bx, by);
+        if (isWall(bx, by) || crates.has(beyondKey)) {
+          announceMovement("O bloco não pode avançar nessa direção.");
+          return;
+        }
+        crates.delete(nextKey);
+        crates.add(beyondKey);
+      }
+      player = { x: nx, y: ny };
+      moves += 1;
+      routeSteps.push(direction);
+      draw();
+      updatePanel();
+      if (canvasStatus) {
+        canvasStatus.textContent = "Movimento registrado.";
+        canvasStatus.style.opacity = "";
+      }
+      checkComplete();
+    }
+
+    function updatePanel() {
+      var placed = 0;
+      targets.forEach(function(target) { if (crates.has(target)) placed += 1; });
+      document.getElementById("currentStage").textContent = Number(config.initialStage) + 1;
+      document.getElementById("currentMoves").textContent = moves;
+      document.getElementById("targetProgress").textContent = placed + " / " + targets.size;
+      updateCanvasDescription();
+    }
+
+    function checkComplete() {
+      var won = true;
+      targets.forEach(function(target) { if (!crates.has(target)) won = false; });
+      if (!won || targets.size === 0) return;
+      solved = true;
+      persistJournal();
+      if (canvasStatus) {
+        canvasStatus.textContent = "Mapa concluído! Conte para alguém qual foi sua ideia de rota e onde precisou mudá-la.";
+        canvasStatus.style.opacity = "1";
+      }
+      document.getElementById("gameCompleteActions").hidden = false;
+      document.getElementById("nextStageLink").hidden = true;
+      saveEvidenceButton.hidden = false;
+      if (journalStatus) journalStatus.textContent = "Rota resolvida. Revise sua estratégia para registrar a conclusão.";
+      if (reflectionField) reflectionField.focus();
+    }
+
+    function saveCompletion() {
+      if (!solved || completed) return;
+      var planText = planField ? planField.value.trim() : "";
+      var reflectionText = reflectionField ? reflectionField.value.trim() : "";
+      if (reflectionText.length < 12) {
+        if (journalStatus) journalStatus.textContent = "Explique a revisão em pelo menos 12 caracteres.";
+        if (reflectionField) reflectionField.focus();
+        return;
+      }
+      completed = true;
+      var savedRound = roundNumber;
+      saveEvidenceButton.disabled = true;
+      saveEvidenceButton.textContent = "Registrando…";
+      persistJournal();
+      SemaAPI.call("game.saveScore", {
+        stage: config.initialStage,
+        moves: moves,
+        evidence: {
+          plan: planText,
+          reflection: reflectionText,
+          route: routeSteps,
+          restarts: restarts,
+          durationSeconds: Math.max(0, Math.round((Date.now() - startedAt) / 1000))
+        }
+      }).then(function(response) {
+        if (savedRound !== roundNumber) return;
+        var unlocked = response.data && response.data.newAchievements
+          ? response.data.newAchievements
+          : [];
+        var message = "Mapa concluído em " + moves + " movimentos. " + (reflectionText ? "Seu plano foi guardado no caderno da rota." : "Registre agora sua estratégia e o que faria diferente.");
+        if (unlocked.length) message += " Nova conquista: " + unlocked.join(", ") + ".";
+        if (unlocked.length && typeof window.updateInventory === "function") {
+          window.updateInventory(unlocked.map(function(name) {
+            return { name: name, quantity: 1, imageName: "powerup" };
+          }));
+        }
+        showServerMessage(message);
+        var actions = document.getElementById("gameCompleteActions");
+        var nextLink = document.getElementById("nextStageLink");
+        var nextStage = response.data && response.data.progress
+          ? Number(response.data.progress.currentStage)
+          : Number(config.initialStage);
+        nextLink.setAttribute(
+          "href",
+          SemaAPI.withSession(nextStage !== Number(config.initialStage)
+            ? "?page=game&stage=" + nextStage
+            : "?page=maps")
+        );
+        nextLink.textContent = nextStage !== Number(config.initialStage)
+          ? "Próximo desafio"
+          : "Voltar aos mapas";
+        nextLink.hidden = false;
+        saveEvidenceButton.hidden = true;
+
+        var savedScore = response.data && response.data.score ? response.data.score : null;
+        lastSavedScoreId = savedScore && savedScore.id ? savedScore.id : null;
+        var btnStrat = document.getElementById("btnStrategyFeedback");
+        if (btnStrat && lastSavedScoreId) {
+          btnStrat.hidden = false;
+        }
+
+        if (journalStatus) journalStatus.textContent = "Plano, rota e revisão registrados com segurança.";
+        actions.hidden = false;
+      }).catch(function(error) {
+        if (savedRound !== roundNumber) return;
+        completed = false;
+        saveEvidenceButton.disabled = false;
+        saveEvidenceButton.textContent = "Registrar conclusão";
+        if (canvasStatus) {
+          canvasStatus.textContent = "Não foi possível registrar a conclusão.";
+          canvasStatus.style.opacity = "1";
+        }
+        showServerMessage(error.message, "error");
+      });
+    }
+
+    var btnStrat = document.getElementById("btnStrategyFeedback");
+    var stratCard = document.getElementById("strategyFeedbackCard");
+    var stratStatus = document.getElementById("strategyFeedbackStatus");
+    var stratContent = document.getElementById("strategyFeedbackContent");
+    var stratObs = document.getElementById("strategyFeedbackObservation");
+    var stratQuotesCont = document.getElementById("strategyFeedbackQuotesContainer");
+    var stratQuotes = document.getElementById("strategyFeedbackQuotes");
+    var stratQues = document.getElementById("strategyFeedbackQuestion");
+    var stratNext = document.getElementById("strategyFeedbackNextTest");
+    var stratReply = document.getElementById("strategyStudentReply");
+    var btnSaveReply = document.getElementById("btnSaveStrategyReply");
+    var replyStatus = document.getElementById("strategyStudentReplyStatus");
+
+    if (btnStrat) {
+      btnStrat.addEventListener("click", function() {
+        if (!lastSavedScoreId) return;
+        if (stratCard) stratCard.hidden = false;
+        if (stratContent) stratContent.hidden = true;
+        if (stratStatus) {
+          stratStatus.hidden = false;
+          stratStatus.textContent = "Consultando a expedição cartográfica…";
+        }
+        btnStrat.disabled = true;
+
+        if (stratReply && !stratReply.value) {
+          try {
+            var draft = localStorage.getItem(journalStorageKey("strategy_reply"));
+            if (draft) stratReply.value = draft;
+          } catch (ignore) {}
+        }
+
+        SemaAPI.call("game.strategyFeedback", { scoreId: lastSavedScoreId })
+          .then(function(res) {
+            btnStrat.disabled = false;
+            if (stratStatus) stratStatus.hidden = true;
+            if (stratContent) stratContent.hidden = false;
+            var data = res && res.data ? res.data : {};
+            if (stratObs) stratObs.textContent = data.observacao || "Estratégia analisada com sucesso.";
+            if (stratQues) stratQues.textContent = data.pergunta || "O que você mudou entre seu plano e sua solução?";
+            if (stratNext) stratNext.textContent = data.proximoTeste || "Tente planejar a próxima etapa antecipadamente.";
+
+            var providerBadge = document.getElementById("strategyFeedbackProviderBadge");
+            var reviewBadge = document.getElementById("strategyFeedbackReviewBadge");
+            var limitCont = document.getElementById("strategyFeedbackLimitationContainer");
+            var limitEl = document.getElementById("strategyFeedbackLimitation");
+
+            if (providerBadge) {
+              if (data.provider === "gemini") {
+                providerBadge.textContent = "Análise por IA (Gemini)";
+              } else {
+                providerBadge.textContent = "Análise pedagógica local";
+              }
+            }
+
+            if (reviewBadge) {
+              reviewBadge.hidden = false;
+              if (data.isApproved || data.reviewStatus === "approved") {
+                reviewBadge.textContent = "Aprovado por docente";
+                reviewBadge.style.background = "rgba(186,255,74,.15)";
+                reviewBadge.style.color = "var(--accent)";
+              } else {
+                reviewBadge.textContent = "Aguardando revisão docente";
+                reviewBadge.style.background = "rgba(245,158,11,.15)";
+                reviewBadge.style.color = "#f59e0b";
+              }
+            }
+
+            if (limitCont && limitEl) {
+              if (data.limitacao && String(data.limitacao).trim()) {
+                limitEl.textContent = String(data.limitacao).trim();
+                limitCont.hidden = false;
+              } else {
+                limitCont.hidden = true;
+              }
+            }
+
+            if (stratQuotes && stratQuotesCont) {
+              stratQuotes.innerHTML = "";
+              if ((data.isApproved || data.isTeacherView) && Array.isArray(data.trechosDeApoio) && data.trechosDeApoio.length > 0) {
+                data.trechosDeApoio.forEach(function(quote) {
+                  var li = document.createElement("li");
+                  li.textContent = '"' + quote + '"';
+                  stratQuotes.appendChild(li);
+                });
+                stratQuotesCont.hidden = false;
+              } else {
+                stratQuotesCont.hidden = true;
+              }
+            }
+
+            if (stratReply) {
+              if (data.studentExplanation) {
+                stratReply.value = data.studentExplanation;
+              } else {
+                try {
+                  var localDraft = localStorage.getItem(journalStorageKey("strategy_reply"));
+                  if (localDraft && !stratReply.value) {
+                    stratReply.value = localDraft;
+                  }
+                } catch (ignore) {}
+              }
+            }
+
+            // Interface docente de homologação e revisão (Piloto)
+            var teacherPanel = document.getElementById("teacherReviewPanel");
+            var teacherEditObs = document.getElementById("teacherEditObservation");
+            var teacherNoteInput = document.getElementById("teacherReviewNoteInput");
+            var btnApprove = document.getElementById("btnApproveStrategyFeedback");
+            var btnSaveDraft = document.getElementById("btnSaveDraftStrategyFeedback");
+            var teacherStatus = document.getElementById("teacherReviewStatus");
+
+            if (teacherPanel) {
+              if (data.isTeacherView) {
+                teacherPanel.hidden = false;
+                if (teacherEditObs) teacherEditObs.value = data.observacao || "";
+                if (teacherNoteInput) teacherNoteInput.value = data.teacherNote || "";
+
+                if (btnApprove && !btnApprove._hasReviewListener) {
+                  btnApprove._hasReviewListener = true;
+                  btnApprove.addEventListener("click", function() {
+                    if (teacherStatus) teacherStatus.textContent = "Aprovando devolutiva…";
+                    btnApprove.disabled = true;
+                    SemaAPI.call("game.strategyFeedback.review", {
+                      scoreId: lastSavedScoreId,
+                      review: {
+                        status: "approved",
+                        observacao: teacherEditObs ? teacherEditObs.value.trim() : "",
+                        teacherNote: teacherNoteInput ? teacherNoteInput.value.trim() : ""
+                      }
+                    }).then(function() {
+                      btnApprove.disabled = false;
+                      if (teacherStatus) teacherStatus.textContent = "Devolutiva aprovada com sucesso!";
+                      if (reviewBadge) {
+                        reviewBadge.textContent = "Aprovado por docente";
+                        reviewBadge.style.background = "rgba(186,255,74,.15)";
+                        reviewBadge.style.color = "var(--accent)";
+                      }
+                    }).catch(function(err) {
+                      btnApprove.disabled = false;
+                      if (teacherStatus) teacherStatus.textContent = "Erro: " + (err.message || "tente novamente.");
+                    });
+                  });
+                }
+
+                if (btnSaveDraft && !btnSaveDraft._hasDraftListener) {
+                  btnSaveDraft._hasDraftListener = true;
+                  btnSaveDraft.addEventListener("click", function() {
+                    if (teacherStatus) teacherStatus.textContent = "Salvando rascunho…";
+                    btnSaveDraft.disabled = true;
+                    SemaAPI.call("game.strategyFeedback.review", {
+                      scoreId: lastSavedScoreId,
+                      review: {
+                        status: "draft",
+                        observacao: teacherEditObs ? teacherEditObs.value.trim() : "",
+                        teacherNote: teacherNoteInput ? teacherNoteInput.value.trim() : ""
+                      }
+                    }).then(function() {
+                      btnSaveDraft.disabled = false;
+                      if (teacherStatus) teacherStatus.textContent = "Rascunho salvo!";
+                    }).catch(function(err) {
+                      btnSaveDraft.disabled = false;
+                      if (teacherStatus) teacherStatus.textContent = "Erro: " + (err.message || "tente novamente.");
+                    });
+                  });
+                }
+              } else {
+                teacherPanel.hidden = true;
+              }
+            }
+          })
+          .catch(function(err) {
+            btnStrat.disabled = false;
+            if (stratStatus) {
+              stratStatus.hidden = false;
+              stratStatus.textContent = "Não foi possível carregar a devolutiva no momento: " + (err.message || "tente novamente.");
+            }
+          });
+      });
+    }
+
+    if (btnSaveReply) {
+      btnSaveReply.addEventListener("click", function() {
+        var replyText = stratReply ? stratReply.value.trim() : "";
+        if (!replyText) return;
+        if (replyStatus) replyStatus.textContent = "Salvando…";
+        btnSaveReply.disabled = true;
+
+        var localSaved = false;
+        try {
+          localStorage.setItem(journalStorageKey("strategy_reply"), replyText);
+          localSaved = true;
+        } catch (ignore) {
+          localSaved = false;
+        }
+
+        if (lastSavedScoreId) {
+          SemaAPI.call("game.strategyFeedback.reply", { scoreId: lastSavedScoreId, explanation: replyText })
+            .then(function(res) {
+              btnSaveReply.disabled = false;
+              if (replyStatus) replyStatus.textContent = "Anotado no caderno!";
+              if (res && res.data && res.data.explanation && stratReply) {
+                stratReply.value = res.data.explanation;
+              }
+            })
+            .catch(function(err) {
+              btnSaveReply.disabled = false;
+              if (replyStatus) {
+                if (localSaved) {
+                  replyStatus.textContent = "Erro ao salvar no servidor. Texto guardado localmente.";
+                } else {
+                  replyStatus.textContent = "Não foi possível salvar nem no servidor nem localmente: " + (err.message || "tente novamente.");
+                }
+              }
+            });
+        } else {
+          btnSaveReply.disabled = false;
+          if (replyStatus) {
+            if (localSaved) {
+              replyStatus.textContent = "Anotado localmente (sem conexão com o servidor).";
+            } else {
+              replyStatus.textContent = "Erro: não foi possível salvar localmente.";
+            }
+          }
+        }
+      });
+    }
+
+    document.getElementById("moveUp").addEventListener("click", function() { move("up"); });
+    document.getElementById("moveDown").addEventListener("click", function() { move("down"); });
+    document.getElementById("moveLeft").addEventListener("click", function() { move("left"); });
+    document.getElementById("moveRight").addEventListener("click", function() { move("right"); });
+    document.getElementById("restartGame").addEventListener("click", reset);
+    saveEvidenceButton.addEventListener("click", saveCompletion);
+    document.addEventListener("keydown", function(event) {
+      if (event.defaultPrevented) return;
+      if (/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName)) return;
+      var map = { ArrowUp:"up", w:"up", W:"up", ArrowDown:"down", s:"down", S:"down", ArrowLeft:"left", a:"left", A:"left", ArrowRight:"right", d:"right", D:"right" };
+      if (map[event.key]) { event.preventDefault(); move(map[event.key]); }
+    });
+    reset();
+    loadAssets();
+  });
+</script>

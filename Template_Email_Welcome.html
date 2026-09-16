@@ -1,0 +1,37 @@
+<!-- Template_Email_Welcome.html -->
+<!--
+  Funcionalidade Principal: Define o template HTML para o e-mail de boas-vindas enviado a novos usuários.
+
+  Integrações:
+  - Email_Service.gs: Utilizado para renderizar e enviar este template.
+
+  Uso:
+  Fornece um formato consistente e visualmente agradável para e-mails de boas-vindas, que podem incluir informações personalizadas para o novo usuário.
+-->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+  .email-container { max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  h1 { color: #0056b3; }
+  p { line-height: 1.6; color: #333; }
+  .button { display: inline-block; padding: 10px 20px; margin-top: 15px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px; }
+</style>
+  
+</head>
+<body>
+  <div class="email-container">
+    <h1>Bem-vindo ao <?!= APP_NAME ?>!</h1>
+    <p>Olá, <?= username ?>!</p>
+    <p>Agradecemos por se registrar em nosso jogo. Estamos muito felizes em tê-lo(a) conosco.</p>
+    <p>Comece a explorar as belezas naturais brasileiras agora mesmo!</p>
+    <a href="<?= loginUrl ?>" class="button">Começar a Jogar</a>
+    <p>Se tiver alguma dúvida, não hesite em nos contatar.</p>
+    <p>Atenciosamente,<br>A Equipe <?!= APP_NAME ?></p>
+  </div>
+</body>
+</html>

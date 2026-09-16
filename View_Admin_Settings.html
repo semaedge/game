@@ -1,0 +1,72 @@
+<!-- View_Admin_Settings.html -->
+<!--
+  Funcionalidade Principal: Página administrativa para gerenciar configurações do sistema.
+
+  Integrações:
+  - Layout.html: Utiliza o layout base do aplicativo.
+  - Styles_Admin.html: Aplica estilos gerais de formulário.
+  - Scripts_Main.html: Para comunicação com o backend via `google.script.run`.
+  - DB_Settings.gs: Para obter e atualizar configurações do sistema.
+  - I18n_Core.gs: Para exibir textos traduzidos.
+
+  Uso:
+  Esta página é acessível apenas por administradores para ajustar parâmetros globais do aplicativo.
+-->
+
+<?!= include("Layout"); ?>
+<?!= include("Styles_Admin"); ?>
+<?!= include("Component_AdminNav"); ?>
+
+<div class="container admin-container">
+  <h2>Configurações do Sistema</h2>
+
+  <form id="settingsForm">
+    <div class="form-group">
+      <label for="appTitle">Título do Aplicativo:</label>
+      <input inputmode="text" type="text" id="appTitle" name="appTitle" value="<?= settings.appTitle ?>" class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="welcomeMessage">Mensagem de Boas-Vindas:</label>
+      <textarea id="welcomeMessage" name="welcomeMessage" class="form-control"><?= settings.welcomeMessage ?></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+  </form>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    SemaAPI.call("admin.settings.get")
+      .then(function(response) {
+        document.getElementById("appTitle").value = response.data.appTitle || "";
+        document.getElementById("welcomeMessage").value = response.data.welcomeMessage || "";
+      })
+      .catch(function(error) {
+        showServerMessage(error.message, "error");
+      });
+
+    const settingsForm = document.getElementById("settingsForm");
+    if (settingsForm) {
+      settingsForm.addEventListener("submit", function(event) {
+        event.preventDefault();
+        const appTitle = settingsForm.appTitle.value;
+        const welcomeMessage = settingsForm.welcomeMessage.value;
+
+        const button = settingsForm.querySelector("button[type='submit']");
+        setButtonLoading(button, true, "Salvando…");
+        SemaAPI.call("admin.settings.update", {
+          appTitle: appTitle,
+          welcomeMessage: welcomeMessage
+        }).then(function(response) {
+            setButtonLoading(button, false);
+            showServerMessage(response.message || "Configurações atualizadas.");
+          })
+          .catch(function(error) {
+            setButtonLoading(button, false);
+            showServerMessage(error.message, "error");
+          });
+      });
+    }
+  });
+</script>
+
+<?!= include("Layout_End"); ?>

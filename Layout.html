@@ -1,0 +1,26 @@
+<!-- Layout.html -->
+<!--
+  Funcionalidade Principal: Define o layout HTML base para todas as páginas do aplicativo. Inclui a estrutura básica do documento, cabeçalhos, rodapés e links para folhas de estilo e scripts globais.
+
+  Integrações:
+  - Partial_Header.html: Inclui metatags, título e links para CSS.
+  - Component_Navbar.html: Barra de navegação comum a todas as páginas.
+  - Component_Footer.html: Rodapé comum a todas as páginas.
+
+  Uso:
+  Todas as outras páginas HTML devem incluir este layout para manter a consistência visual e funcional. O helper de inclusão recebe o nome real do parcial HTML.
+-->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= include("Partial_Header"); ?>
+    
+</head>
+  <body data-is-admin="<?= Auth_Session.isAdmin() ? 'true' : 'false' ?>">
+    <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+    <div class="app-shell">
+    <?!= include("Component_Navbar"); ?>
+    <main id="main-content" class="app-main">

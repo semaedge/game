@@ -1,0 +1,110 @@
+<style>
+  .inventory {
+    margin-top: 18px; padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .inventory-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .inventory-title {
+    margin: 0; color: var(--ink); font-size: .92rem; letter-spacing: -.01em;
+  }
+  .inventory-count {
+    min-width: 28px; padding: 3px 8px; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--accent); font-size: .72rem; text-align: center;
+  }
+  .inventory-items { display: grid; gap: 8px; }
+  .inventory-item {
+    display: grid; grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center; gap: 10px; padding: 9px;
+    border: 1px solid rgba(255,255,255,.07); border-radius: 12px;
+    background: rgba(255,255,255,.025);
+  }
+  .inventory-item img {
+    width: 42px; height: 42px; padding: 5px; border-radius: 10px;
+    background: rgba(186,255,74,.08); object-fit: contain;
+  }
+  .inventory-item-name { overflow: hidden; color: #dce9e2; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+  .inventory-item-quantity { color: var(--accent); font-size: .78rem; font-weight: 800; }
+  .inventory-empty {
+    margin: 0; padding: 13px; border: 1px dashed rgba(255,255,255,.1);
+    border-radius: 12px; color: var(--muted); font-size: .78rem; text-align: center;
+  }
+</style>
+
+<section class="inventory" aria-labelledby="inventoryTitle">
+  <div class="inventory-header">
+    <h3 class="inventory-title" id="inventoryTitle">Recompensas da sessão</h3>
+    <span class="inventory-count" id="inventoryCount" aria-label="Quantidade de recompensas">0</span>
+  </div>
+  <div class="inventory-items" id="playerInventory" aria-live="polite">
+    <p class="inventory-empty">Novas conquistas aparecerão aqui.</p>
+  </div>
+</section>
+
+<script>
+  (function() {
+    var fallbackAssets = {
+      key: <?!= JSON.stringify(Helper_Assets.getGameImage("key.png")) ?>,
+      powerup: <?!= JSON.stringify(Helper_Assets.getGameImage("powerup.png")) ?>
+    };
+
+    function safeImageUrl(value, fallback) {
+      var url = String(value || "");
+      return /^(https:\/\/|data:image\/)/i.test(url) ? url : fallback;
+    }
+
+    window.updateInventory = function(items) {
+      var container = document.getElementById("playerInventory");
+      var count = document.getElementById("inventoryCount");
+      if (!container || !count) return;
+
+      var normalizedItems = Array.isArray(items)
+        ? items.filter(function(item) {
+            return item && Number(item.quantity || 0) > 0;
+          }).slice(0, 12)
+        : [];
+
+      container.replaceChildren();
+      count.textContent = String(normalizedItems.length);
+      count.setAttribute(
+        "aria-label",
+        normalizedItems.length === 1 ? "1 recompensa" : normalizedItems.length + " recompensas"
+      );
+
+      if (!normalizedItems.length) {
+        var empty = document.createElement("p");
+        empty.className = "inventory-empty";
+        empty.textContent = "Novas conquistas aparecerão aqui.";
+        container.appendChild(empty);
+        return;
+      }
+
+      normalizedItems.forEach(function(item) {
+        var row = document.createElement("div");
+        var image = document.createElement("img");
+        var name = document.createElement("span");
+        var quantity = document.createElement("strong");
+        var fallback = item.imageName === "key" ? fallbackAssets.key : fallbackAssets.powerup;
+
+        row.className = "inventory-item";
+        var imageUrl = safeImageUrl(item.imageUrl, fallback);
+        image.hidden = !imageUrl;
+        image.onerror = function() { image.hidden = true; };
+        if (imageUrl) image.src = imageUrl;
+        image.alt = "";
+        image.setAttribute("aria-hidden", "true");
+        name.className = "inventory-item-name";
+        name.textContent = String(item.name || "Recompensa").slice(0, 80);
+        quantity.className = "inventory-item-quantity";
+        quantity.textContent = "×" + Math.max(1, Math.min(Number(item.quantity) || 1, 99));
+
+        row.appendChild(image);
+        row.appendChild(name);
+        row.appendChild(quantity);
+        container.appendChild(row);
+      });
+    };
+  })();
+</script>

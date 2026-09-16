@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base target="_top">
+    <style>
+      body { margin:0;padding:18px;background:#07110e;color:#f2f7f4;font:14px/1.5 system-ui; }
+      h2 { margin:0 0 6px; } p { color:#9db1a7; }
+      .actions { display:grid;gap:8px;margin:18px 0; }
+      button { padding:11px;border:0;border-radius:999px;background:#baff4a;color:#07110e;font-weight:800;cursor:pointer; }
+      button.secondary { border:1px solid rgba(255,255,255,.14);background:#122820;color:#f2f7f4; }
+      pre { min-height:100px;padding:12px;overflow:auto;border:1px solid rgba(186,255,74,.18);border-radius:12px;background:#0d1d18;color:#d9e6df;font-size:11px;white-space:pre-wrap; }
+    </style>
+    <?!= include("UX_Standards"); ?>
+</head>
+  <body>
+    <h2>Sema Edge</h2>
+    <p>Manutenção do backend vinculado a esta planilha.</p>
+    <div class="actions">
+      <button id="healthAction" type="button">Verificar saúde</button>
+      <button id="migrationsAction" type="button" class="secondary">Executar migrações</button>
+      <button id="usersAction" type="button" class="secondary">Listar usuários</button>
+    </div>
+    <pre id="output">Selecione uma ação.</pre>
+    <script>
+      function request(action) {
+        var output = document.getElementById("output");
+        output.textContent = "Processando…";
+        google.script.run
+          .withSuccessHandler(function(result) {
+            output.textContent = JSON.stringify(result, null, 2);
+          })
+          .withFailureHandler(function(error) {
+            output.textContent = "Erro: " + error.message;
+          })
+          .sidebarRequest(action);
+      }
+      document.getElementById("healthAction").addEventListener("click", function() { request("health"); });
+      document.getElementById("migrationsAction").addEventListener("click", function() { request("migrations"); });
+      document.getElementById("usersAction").addEventListener("click", function() { request("users"); });
+    </script>
+  </body>
+</html>

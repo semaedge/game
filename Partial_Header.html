@@ -1,0 +1,23 @@
+<!-- Partial_Header.html -->
+<!--
+  Funcionalidade Principal: Contém os elementos HTML que compõem a seção <head> de uma página, como metatags, título e links para folhas de estilo globais.
+
+  Integrações:
+  - Layout.html: Incluído no layout base para padronizar o cabeçalho de todas as páginas.
+  - Styles_Main.html: Inclui os estilos CSS principais.
+
+  Uso:
+  Centraliza a definição do cabeçalho HTML para facilitar a manutenção e garantir a consistência.
+-->
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#081713">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Sema Edge — explore biomas brasileiros, supere desafios e avance no ranking.">
+<title><?!= APP_NAME ?></title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<?!= include("Styles_Main"); ?>
+<?!= include("Styles_Theme_Brazilian"); ?>
+<?!= include("UX_Standards"); ?>
+<base target="_top">

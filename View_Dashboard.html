@@ -1,0 +1,60 @@
+<?!= include("Layout"); ?>
+<?!= include("Component_Sidebar"); ?>
+
+<section class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:28px">
+    <div>
+      <span class="eyebrow">Central do explorador</span>
+      <h2 style="margin-bottom:8px">Olá, <?= user.username ?>.</h2>
+      <p class="muted">Veja sua evolução e escolha o próximo destino.</p>
+    </div>
+    <a href="?page=maps" class="btn btn-primary">Explorar mapas <span aria-hidden="true">→</span></a>
+  </div>
+
+  <div class="grid grid-3">
+    <article class="card">
+      <span class="card-kicker">Estágio atual</span>
+      <p class="card-value"><?= Number(progress.currentStage || 0) + 1 ?></p>
+    </article>
+    <article class="card">
+      <span class="card-kicker">Mapas liberados</span>
+      <p class="card-value"><?= (progress.unlockedStages || []).length ?></p>
+    </article>
+    <article class="card">
+      <span class="card-kicker">Partidas registradas</span>
+      <p class="card-value"><?= scores.length ?></p>
+    </article>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:20px">
+    <article class="container" style="width:100%;margin:0">
+      <span class="eyebrow">Atividade recente</span>
+      <h3>Suas últimas tentativas</h3>
+      <? if (scores.length) { ?>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Estágio</th><th>Movimentos</th><th>Data</th></tr></thead>
+            <tbody>
+              <? scores.slice(0, 5).forEach(function(score) { ?>
+                <tr><td><?= Number(score.stage) + 1 ?></td><td><strong><?= score.score ?></strong></td><td><?= Utils_Date.formatTimestamp(score.createdAt) ?></td></tr>
+              <? }); ?>
+            </tbody>
+          </table>
+        </div>
+      <? } else { ?>
+        <div class="empty-state">Sua primeira tentativa aparecerá aqui.</div>
+      <? } ?>
+    </article>
+    <article class="container" style="width:100%;margin:0">
+      <span class="eyebrow">Próxima missão</span>
+      <h3>Continue avançando</h3>
+      <p class="muted">Planeje antes de mover. Depois, explique o caminho que tentou e o que mudaria numa nova tentativa.</p>
+      <div class="actions">
+        <a href="?page=maps" class="btn btn-primary">Escolher mapa</a>
+        <a href="?page=achievements" class="btn btn-secondary">Conquistas</a>
+      </div>
+    </article>
+  </div>
+</section>
+
+<?!= include("Layout_End"); ?>

@@ -1,0 +1,237 @@
+<script>
+  window.SemaFrontendAudit = (function() {
+    function ratioEarned(weight, passed, total) {
+      if (total === 0) return weight;
+      return Math.round(weight * (passed / total));
+    }
+
+    function run(root) {
+      root = root || document;
+      var checks = [];
+
+      function add(id, category, title, weight, earned, details) {
+        checks.push({
+          id: id,
+          category: category,
+          title: title,
+          weight: weight,
+          earned: earned,
+          status: earned === weight ? "pass" : (earned === 0 ? "fail" : "warning"),
+          details: details
+        });
+      }
+
+      var htmlLanguage = document.documentElement.getAttribute("lang");
+      add("language", "Estrutura", "Idioma do documento", 4, htmlLanguage === "pt-BR" ? 4 : 0,
+        htmlLanguage ? "Idioma encontrado: " + htmlLanguage : "Atributo lang ausente.");
+
+      var landmarkNames = ["nav", "main", "footer"];
+      var foundLandmarks = landmarkNames.filter(function(name) { return root.querySelector(name); }).length;
+      add("landmarks", "Estrutura", "Landmarks principais", 6, ratioEarned(6, foundLandmarks, landmarkNames.length),
+        foundLandmarks + " de " + landmarkNames.length + " landmarks encontrados.");
+
+      var skipLink = root.querySelector(".skip-link[href='#main-content']");
+      add("skip_link", "Estrutura", "Atalho para conteúdo", 4, skipLink ? 4 : 0,
+        skipLink ? "Skip-link disponível." : "Skip-link ausente.");
+
+      var headings = Array.prototype.slice.call(root.querySelectorAll("main h1, main h2, main h3, main h4, main h5, main h6"));
+      var headingValid = headings.length > 0 && Number(headings[0].tagName.slice(1)) === 1;
+      for (var h = 1; h < headings.length && headingValid; h += 1) {
+        var previous = Number(headings[h - 1].tagName.slice(1));
+        var current = Number(headings[h].tagName.slice(1));
+        if (current - previous > 1) headingValid = false;
+      }
+      add("heading_order", "Estrutura", "Hierarquia de títulos", 6, headingValid ? 6 : 0,
+        headingValid ? "Hierarquia sem saltos e iniciada em H1." : "A página deve iniciar em H1 e evitar saltos de nível.");
+
+      var fields = Array.prototype.slice.call(root.querySelectorAll("input:not([type='hidden']), select, textarea"));
+      var labeledFields = fields.filter(function(field) {
+        return Boolean(field.getAttribute("aria-label") ||
+          field.getAttribute("aria-labelledby") ||
+          (field.id && root.querySelector("label[for='" + CSS.escape(field.id) + "']")) ||
+          field.closest("label"));
+      }).length;
+      add("field_labels", "Acessibilidade", "Campos identificados", 10,
+        ratioEarned(10, labeledFields, fields.length),
+        labeledFields + " de " + fields.length + " campos possuem rótulo.");
+
+      var controls = Array.prototype.slice.call(root.querySelectorAll("button, a"));
+      var namedControls = controls.filter(function(control) {
+        return Boolean((control.textContent || "").trim() ||
+          control.getAttribute("aria-label") ||
+          control.getAttribute("title"));
+      }).length;
+      add("control_names", "Acessibilidade", "Controles com nome acessível", 10,
+        ratioEarned(10, namedControls, controls.length),
+        namedControls + " de " + controls.length + " controles estão nomeados.");
+
+      var links = Array.prototype.slice.call(root.querySelectorAll("a"));
+      var validLinks = links.filter(function(link) {
+        var href = link.getAttribute("href");
+        return href && href !== "#";
+      }).length;
+      add("valid_links", "Acessibilidade", "Links com destino", 5,
+        ratioEarned(5, validLinks, links.length),
+        validLinks + " de " + links.length + " links possuem destino explícito.");
+
+      var horizontalOverflow = document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;
+      add("overflow", "Responsividade", "Sem overflow horizontal", 10, horizontalOverflow ? 0 : 10,
+        horizontalOverflow ? "Conteúdo excede a largura da viewport." : "Nenhum overflow horizontal detectado.");
+
+      var viewport = root.querySelector("meta[name='viewport']");
+      add("viewport", "Responsividade", "Viewport configurada", 5, viewport ? 5 : 0,
+        viewport ? "Meta viewport disponível." : "Meta viewport ausente.");
+
+      var visibleControls = controls.filter(function(control) {
+        var style = window.getComputedStyle(control);
+        var rect = control.getBoundingClientRect();
+        return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      });
+      var touchReady = visibleControls.filter(function(control) {
+        var rect = control.getBoundingClientRect();
+        return rect.width >= 40 && rect.height >= 40;
+      }).length;
+      add("touch_targets", "Responsividade", "Alvos de toque adequados", 10,
+        ratioEarned(10, touchReady, visibleControls.length),
+        touchReady + " de " + visibleControls.length + " controles visíveis têm ao menos 40×40px.");
+
+      var activeNavigation = root.querySelector(".nav-links a[aria-current='page']");
+      add("active_navigation", "Intuitividade", "Localização atual visível", 5, activeNavigation ? 5 : 0,
+        activeNavigation ? "Item atual destacado no menu." : "Nenhum item atual identificado.");
+
+      var primaryHeading = root.querySelector("main h1, main h2");
+      add("page_title", "Intuitividade", "Título principal visível", 5,
+        primaryHeading && (primaryHeading.textContent || "").trim() ? 5 : 0,
+        primaryHeading ? "Título encontrado: " + primaryHeading.textContent.trim() : "Título principal ausente.");
+
+      var primaryAction = root.querySelector("main .btn-primary, main button[type='submit']");
+      add("primary_action", "Intuitividade", "Ação principal evidente", 5, primaryAction ? 5 : 0,
+        primaryAction ? "Ação primária encontrada." : "Nenhuma ação principal destacada.");
+
+      var descriptiveText = root.querySelector("main p");
+      add("page_description", "Intuitividade", "Contexto da página", 5,
+        descriptiveText && (descriptiveText.textContent || "").trim().length >= 20 ? 5 : 0,
+        descriptiveText ? "Texto introdutório encontrado." : "Inclua uma explicação curta do objetivo da tela.");
+
+      var requiredFields = fields.filter(function(field) { return field.required; }).length;
+      add("required_fields", "Feedback", "Obrigatoriedade dos campos", 5,
+        fields.length === 0 || requiredFields === fields.length ? 5 : ratioEarned(5, requiredFields, fields.length),
+        requiredFields + " de " + fields.length + " campos indicam obrigatoriedade.");
+
+      add("loading_runtime", "Feedback", "Runtime de carregamento", 5,
+        typeof window.setButtonLoading === "function" ? 5 : 0,
+        typeof window.setButtonLoading === "function" ? "Helper de loading disponível." : "Helper de loading indisponível.");
+
+      var total = checks.reduce(function(sum, check) { return sum + check.weight; }, 0);
+      var earned = checks.reduce(function(sum, check) { return sum + check.earned; }, 0);
+      return {
+        page: new URLSearchParams(window.location.search).get("page") || "home",
+        score: Math.round((earned / total) * 100),
+        earnedPoints: earned,
+        totalPoints: total,
+        issues: checks.filter(function(check) { return check.status !== "pass"; }).length,
+        checks: checks,
+        metrics: {
+          fields: fields.length,
+          controls: controls.length,
+          touchTargets: visibleControls.length,
+          viewportWidth: document.documentElement.clientWidth,
+          documentWidth: document.documentElement.scrollWidth
+        },
+        auditedAt: new Date().toISOString()
+      };
+    }
+
+    function showOverlay(report) {
+      var existing = document.getElementById("semaUiAuditOverlay");
+      if (existing) existing.remove();
+      var overlay = document.createElement("aside");
+      overlay.id = "semaUiAuditOverlay";
+      overlay.setAttribute("aria-label", "Diagnóstico de interface");
+      overlay.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;width:min(340px,calc(100% - 32px));padding:18px;border:1px solid rgba(186,255,74,.3);border-radius:16px;background:#0d1d18;color:#f2f7f4;box-shadow:0 24px 70px rgba(0,0,0,.55);font:14px/1.45 system-ui";
+
+      var title = document.createElement("strong");
+      title.style.cssText = "display:block;font-size:16px;margin-bottom:8px";
+      title.textContent = "Auditoria desta tela: " + report.score + "/100";
+      overlay.appendChild(title);
+
+      var summary = document.createElement("p");
+      summary.style.cssText = "margin:0 0 12px;color:#9db1a7";
+      summary.textContent = report.issues + " ponto(s) de atenção • " + report.metrics.viewportWidth + "px";
+      overlay.appendChild(summary);
+
+      report.checks.filter(function(check) { return check.status !== "pass"; }).slice(0, 4).forEach(function(check) {
+        var item = document.createElement("div");
+        item.style.cssText = "padding:8px 0;border-top:1px solid rgba(255,255,255,.08)";
+        item.textContent = check.title + " — " + check.details;
+        overlay.appendChild(item);
+      });
+
+      var close = document.createElement("button");
+      close.type = "button";
+      close.textContent = "Fechar diagnóstico";
+      close.style.cssText = "width:100%;margin-top:12px;padding:10px;border:0;border-radius:999px;background:#baff4a;color:#07110e;font-weight:800;cursor:pointer";
+      close.addEventListener("click", function() {
+        overlay.remove();
+        var url = new URL(window.location.href);
+        url.searchParams.delete("ui-audit");
+        window.history.replaceState({}, "", url.toString());
+      });
+      overlay.appendChild(close);
+      document.body.appendChild(overlay);
+    }
+
+    function viewportBucket(width) {
+      if (!width) return "desconhecido";
+      if (width < 700) return "mobile";
+      if (width < 1100) return "tablet";
+      return "desktop";
+    }
+
+    // Uma amostra por tela e faixa de viewport a cada sessão do navegador:
+    // o servidor deduplica, mas não há motivo para gastar chamadas repetindo
+    // a mesma medição a cada navegação.
+    function alreadySampled(report) {
+      var key = "sema-ui-audit:" + report.page + ":" + viewportBucket(report.metrics.viewportWidth);
+      try {
+        if (window.sessionStorage.getItem(key)) return true;
+        window.sessionStorage.setItem(key, "1");
+        return false;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function submit(report) {
+      if (!window.SemaAPI) return Promise.resolve(null);
+      return SemaAPI.call("admin.maturity.frontend.audit", { report: report },
+        { redirectOnAuth: false });
+    }
+
+    return {
+      run: run,
+      showOverlay: showOverlay,
+      submit: submit,
+      alreadySampled: alreadySampled,
+      viewportBucket: viewportBucket
+    };
+  })();
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if (document.body.dataset.isAdmin !== "true") return;
+    var params = new URLSearchParams(window.location.search);
+    var explicit = params.get("ui-audit") === "1";
+
+    window.setTimeout(function() {
+      var report = SemaFrontendAudit.run(document);
+      if (explicit) SemaFrontendAudit.showOverlay(report);
+
+      // A avaliação de intuitividade só tem evidência se as medições chegarem
+      // ao servidor. Falhas aqui são silenciosas: é telemetria de diagnóstico,
+      // não parte do fluxo do usuário.
+      if (explicit || !SemaFrontendAudit.alreadySampled(report)) {
+        SemaFrontendAudit.submit(report).catch(function() {});
+      }
+    }, 120);
+  });
+</script>

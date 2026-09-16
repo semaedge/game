@@ -1,0 +1,63 @@
+<?!= include("Layout"); ?>
+
+<section class="page-wrap">
+  <div style="display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:28px">
+    <div>
+      <span class="eyebrow">Rotas da turma</span>
+      <h2>Painel de tentativas</h2>
+      <p class="muted">Use os números para comparar caminhos, não pessoas. Eles não medem inteligência e não valem nota.</p>
+    </div>
+    <div style="min-width:210px">
+      <label for="stageSelect" class="card-kicker">Filtrar por estágio</label>
+      <select id="stageSelect" style="margin-top:7px">
+        <option value="" <?= selectedStage === '' ? 'selected' : '' ?>>Todos os estágios</option>
+        <? maps.forEach(function(map) { ?>
+          <option value="<?= map.id ?>" <?= String(selectedStage) === String(map.id) ? 'selected' : '' ?>><?= map.name ?></option>
+        <? }); ?>
+      </select>
+    </div>
+  </div>
+
+  <?!= include("Component_RankingVizinhanca"); ?>
+  <div class="container" style="width:100%;margin:0;margin-bottom:20px">
+    <div id="rankingVizinhanca"></div>
+  </div>
+  <script>
+    RankingVizinhanca.render('rankingVizinhanca', <?!= JSON.stringify(vizinhanca) ?>);
+  </script>
+
+  <div class="container" style="width:100%;margin:0">
+    <? if (leaderboard.length) { ?>
+      <div class="table-wrap">
+        <table class="leaderboard-table">
+          <thead><tr><th>Ordem</th><th>Identificador protegido</th><th>Estágio</th><th>Movimentos</th></tr></thead>
+          <tbody>
+            <? leaderboard.forEach(function(entry, index) { ?>
+              <tr>
+                <td><strong class="text-accent">#<?= index + 1 ?></strong></td>
+                <td><?= 'Explorador ' + (index + 1) ?></td>
+                <td><?= Number(entry.stage) + 1 ?></td>
+                <td><strong><?= entry.score ?></strong></td>
+              </tr>
+            <? }); ?>
+          </tbody>
+        </table>
+      </div>
+    <? } else { ?>
+      <div class="empty-state">
+        <h3>Nenhum resultado ainda</h3>
+        <p>Conclua um desafio para registrar uma rota.</p>
+        <a href="?page=register" class="btn btn-primary">Começar a jogar</a>
+      </div>
+    <? } ?>
+  </div>
+</section>
+
+<script>
+  document.getElementById("stageSelect").addEventListener("change", function() {
+    var value = this.value;
+    redirectTo("?page=leaderboard" + (value === "" ? "" : "&stage=" + encodeURIComponent(value)));
+  });
+</script>
+
+<?!= include("Layout_End"); ?>

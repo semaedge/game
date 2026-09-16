@@ -1,0 +1,26 @@
+<style>
+  .admin-nav {
+    display: flex; flex-wrap: wrap; gap: 6px; width: var(--page);
+    margin: 24px auto 0; padding: 7px; border: 1px solid var(--line);
+    border-radius: 999px; background: rgba(255,255,255,.025);
+  }
+  .admin-nav a {
+    flex: 1 1 auto; padding: 9px 13px; border-radius: 999px;
+    color: var(--muted); text-align: center; text-decoration: none;
+    font-size: .82rem; font-weight: 700;
+  }
+  .admin-nav a:hover, .admin-nav a[aria-current="page"] {
+    color: #07110e; background: var(--accent);
+  }
+  @media (max-width: 680px) {
+    .admin-nav { border-radius: 18px; }
+    .admin-nav a { flex-basis: 30%; }
+  }
+</style>
+<nav class="admin-nav" aria-label="Administração">
+  <a href="?page=admin-users">Usuários</a>
+  <a href="?page=admin-logs">Auditoria</a>
+  <a href="?page=admin-settings">Configurações</a>
+  <a href="?page=backend-maturity">Backend</a>
+  <a href="?page=frontend-maturity">Frontend</a>
+</nav>

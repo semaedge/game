@@ -1,0 +1,151 @@
+<!-- View_Admin_Users.html -->
+<!--
+  Funcionalidade Principal: Listagem e gestão das contas de usuário.
+
+  Integrações:
+  - Router_Pages.gs: injeta `users` na rota `admin-users`.
+  - API_Router.gs: ações `admin.users.delete` e `admin.users.export`.
+  - Scripts_Utils.html: busca, estado vazio e download do CSV.
+
+  Notas desta revisão:
+  - A lista não tratava o caso vazio: sem usuários, a tabela ficava em branco
+    sem explicar o motivo.
+  - Excluir e exportar não davam retorno de carregamento, então o clique
+    parecia não ter efeito enquanto a chamada acontecia — e nada impedia o
+    clique duplo em uma exclusão.
+  - O download criava uma object URL e nunca a revogava.
+  - As classes `table table-striped` vinham de Styles_Components, um arquivo
+    órfão que nunca era incluído: a estilização não existia.
+  - Os handlers eram inline, com o id do usuário interpolado dentro de aspas.
+-->
+
+<?!= include("Layout"); ?>
+<?!= include("Styles_Admin"); ?>
+<?!= include("Component_AdminNav"); ?>
+
+<style>
+  .users-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 16px; }
+  .users-toolbar input {
+    min-height: 38px; min-width: 240px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface-2);
+  }
+  .user-id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .74rem; }
+  .is-hidden { display: none; }
+</style>
+
+<section class="page-wrap admin-container">
+  <h2>Gerenciamento de usuários</h2>
+
+  <div class="users-toolbar">
+    <div>
+      <p class="muted" id="usersSummary" style="margin:0"><?= users.length ?> conta(s) cadastrada(s).</p>
+    </div>
+    <div class="form-group" style="margin:0;margin-left:auto">
+      <label for="userSearch" class="sr-only">Buscar usuário</label>
+      <input inputmode="search" type="search" id="userSearch" placeholder="Buscar por nome ou e-mail" autocomplete="off">
+    </div>
+    <button id="exportUsers" type="button" class="btn btn-primary">Exportar CSV</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="user-table">
+      <thead>
+        <tr><th>Usuário</th><th>E-mail</th><th>Criado em</th><th>ID</th><th>Ações</th></tr>
+      </thead>
+      <tbody id="usersTableBody">
+        <? if (!users.length) { ?>
+          <tr>
+            <td colspan="5" class="table-empty">
+              <strong>Nenhuma conta cadastrada.</strong>
+              <p>As contas aparecem aqui assim que alguém se registrar pelo aplicativo.</p>
+            </td>
+          </tr>
+        <? } else { ?>
+          <? users.forEach(function(user) { ?>
+            <tr data-user-row
+                data-username="<?= String(user.username || '').toLowerCase() ?>"
+                data-email="<?= String(user.email || '').toLowerCase() ?>">
+              <td><?= user.username ?></td>
+              <td><?= user.email ?></td>
+              <td><?= Utils_Date.formatTimestamp(user.createdAt) ?></td>
+              <td class="user-id"><?= user.id ?></td>
+              <td>
+                <button type="button" class="btn btn-danger btn-sm"
+                        data-delete-user="<?= user.id ?>"
+                        data-username-label="<?= user.username ?>">Excluir</button>
+              </td>
+            </tr>
+          <? }); ?>
+        <? } ?>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  (function() {
+    var tableBody = document.getElementById("usersTableBody");
+    var summary = document.getElementById("usersSummary");
+    var totalUsers = <?= users.length ?>;
+
+    function deleteUser(button) {
+      var userId = button.getAttribute("data-delete-user");
+      var username = button.getAttribute("data-username-label") || "este usuário";
+
+      showConfirmModal(
+        "Excluir a conta de " + username + "? O progresso e as pontuações deixam de ser acessíveis.",
+        "Confirmar exclusão",
+        function(confirmed) {
+          if (!confirmed) return;
+          SemaUI.withButton(button, "Excluindo…", function() {
+            return SemaAPI.call("admin.users.delete", { userId: userId }).then(function(response) {
+              showServerMessage(response.message || "Usuário excluído.");
+              window.setTimeout(function() { window.location.reload(); }, 600);
+            });
+          });
+        }
+      );
+    }
+
+    function filterUsers(term) {
+      var needle = String(term || "").trim().toLowerCase();
+      var rows = tableBody.querySelectorAll("[data-user-row]");
+      var visible = 0;
+
+      Array.prototype.forEach.call(rows, function(row) {
+        var matches = !needle ||
+          row.getAttribute("data-username").indexOf(needle) !== -1 ||
+          row.getAttribute("data-email").indexOf(needle) !== -1;
+        row.classList.toggle("is-hidden", !matches);
+        if (matches) visible += 1;
+      });
+
+      summary.textContent = needle
+        ? visible + " de " + totalUsers + " conta(s) correspondem à busca."
+        : totalUsers + " conta(s) cadastrada(s).";
+    }
+
+    tableBody.addEventListener("click", function(event) {
+      var button = event.target.closest("[data-delete-user]");
+      if (button) deleteUser(button);
+    });
+
+    var search = document.getElementById("userSearch");
+    if (search) search.addEventListener("input", SemaUI.debounce(function() {
+      filterUsers(search.value);
+    }, 180));
+
+    document.getElementById("exportUsers").addEventListener("click", function() {
+      var button = this;
+      SemaUI.withButton(button, "Gerando…", function() {
+        return SemaAPI.call("admin.users.export").then(function(response) {
+          var result = response.data || {};
+          SemaUI.downloadFile(result.filename, result.content);
+          showServerMessage(response.message || "Exportação concluída.");
+        });
+      });
+    });
+  })();
+</script>
+
+<?!= include("Layout_End"); ?>

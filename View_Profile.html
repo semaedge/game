@@ -1,0 +1,85 @@
+<?!= include("Layout"); ?>
+<?!= include("Component_Sidebar"); ?>
+
+<section class="page-wrap">
+  <span class="eyebrow">Conta do explorador</span>
+  <h2>Meu perfil</h2>
+  <p class="muted">Atualize seus dados de acesso e mantenha sua conta protegida.</p>
+
+  <div class="grid grid-2" style="margin-top:28px">
+    <article class="container" style="width:100%;margin:0">
+      <h3>Informações públicas</h3>
+      <p class="muted">Seu nome aparece no ranking e nas conquistas.</p>
+      <form id="profileForm">
+        <div class="form-group">
+          <label for="username">Nome de usuário</label>
+          <input inputmode="text" type="text" id="username" name="username" value="<?= user.username ?>" minlength="3" maxlength="20" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input inputmode="email" type="email" id="email" name="email" value="<?= user.email ?>" autocomplete="email" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      </form>
+    </article>
+
+    <article class="container" style="width:100%;margin:0">
+      <h3>Segurança</h3>
+      <p class="muted">Escolha uma nova senha com pelo menos seis caracteres.</p>
+      <form id="passwordForm">
+        <div class="form-group">
+          <label for="oldPassword">Senha atual</label>
+          <input inputmode="text" type="password" id="oldPassword" name="oldPassword" autocomplete="current-password" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">Nova senha</label>
+          <input inputmode="text" type="password" id="newPassword" name="newPassword" minlength="6" maxlength="30" autocomplete="new-password" required>
+        </div>
+        <button type="submit" class="btn btn-secondary">Alterar senha</button>
+      </form>
+    </article>
+  </div>
+</section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var profileForm = document.getElementById("profileForm");
+    profileForm.addEventListener("submit", function(event) {
+      event.preventDefault();
+      var button = profileForm.querySelector("button");
+      setButtonLoading(button, true, "Salvando…");
+      SemaAPI.call("user.updateProfile", {
+        username: profileForm.username.value.trim(),
+        email: profileForm.email.value.trim()
+      }).then(function(response) {
+          setButtonLoading(button, false);
+          showServerMessage(response.message || "Perfil atualizado.");
+        })
+        .catch(function(error) {
+          setButtonLoading(button, false);
+          showServerMessage(error.message, "error");
+        });
+    });
+
+    var passwordForm = document.getElementById("passwordForm");
+    passwordForm.addEventListener("submit", function(event) {
+      event.preventDefault();
+      var button = passwordForm.querySelector("button");
+      setButtonLoading(button, true, "Alterando…");
+      SemaAPI.call("user.changePassword", {
+        currentPassword: passwordForm.oldPassword.value,
+        newPassword: passwordForm.newPassword.value
+      }).then(function(response) {
+          setButtonLoading(button, false);
+          showServerMessage(response.message || "Senha alterada.");
+          passwordForm.reset();
+        })
+        .catch(function(error) {
+          setButtonLoading(button, false);
+          showServerMessage(error.message, "error");
+        });
+    });
+  });
+</script>
+
+<?!= include("Layout_End"); ?>

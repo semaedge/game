@@ -1,0 +1,35 @@
+<?!= include("Layout"); ?>
+<?!= include("Component_Sidebar"); ?>
+
+<style>
+  .achievement-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 28px; }
+  .achievement-card { min-height: 230px; display: flex; flex-direction: column; justify-content: space-between; padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(18,40,32,.9), rgba(9,23,18,.9)); }
+  .achievement-icon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 17px; color: #07110e; background: var(--accent); font-size: 1.4rem; font-weight: 900; transform: rotate(-4deg); }
+  @media (max-width: 760px) { .achievement-grid { grid-template-columns: 1fr; } }
+</style>
+
+<section class="page-wrap">
+  <span class="eyebrow">Coleção</span>
+  <h2>Minhas conquistas</h2>
+  <p class="muted">Marcos desbloqueados durante sua jornada pelo Sema Edge.</p>
+  <div class="achievement-grid">
+    <? if (achievements.length === 0) { ?>
+      <div class="empty-state">
+        <h3>Sua coleção começa no primeiro mapa</h3>
+        <p>Conclua um desafio para desbloquear a primeira conquista.</p>
+        <a href="?page=maps" class="btn btn-primary">Explorar mapas</a>
+      </div>
+    <? } ?>
+    <? achievements.forEach(function(achievement, index) { ?>
+      <article class="achievement-card">
+        <div class="achievement-icon"><?= index + 1 ?></div>
+        <div>
+          <span class="card-kicker">Conquista desbloqueada</span>
+          <h3 style="margin:7px 0 0"><?= achievement ?></h3>
+        </div>
+      </article>
+    <? }); ?>
+  </div>
+</section>
+
+<?!= include("Layout_End"); ?>
